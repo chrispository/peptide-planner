@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Peptide Dose Planner</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Peptide planner</p>
+          <h1>Dosing and BAC water calculator</h1>
+        </div>
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color mode">
+          <span class="theme-icon" aria-hidden="true">◐</span>
+          <span id="themeLabel">Dark</span>
+        </button>
+      </header>
+
+      <section class="notice">
+        <strong>Planning tool only.</strong>
+        Verify dose, concentration, injection route, storage, and beyond-use dates with a qualified clinician or pharmacist.
+      </section>
+
+      <section class="layout">
+        <form class="panel controls" id="plannerForm">
+          <div class="section-heading">
+            <h2>Vial</h2>
+            <p>Pick a preset or enter your own amount.</p>
+          </div>
+
+          <label class="field">
+            <span>Preset</span>
+            <select id="preset">
+              <option value="NAD+|500|100">NAD+ 500 mg, 100 mg shot</option>
+              <option value="BPC-157|5|0.25">BPC-157 5 mg, 250 mcg shot</option>
+              <option value="TB-500|10|2">TB-500 10 mg, 2 mg shot</option>
+              <option value="Tirzepatide|30|2.5">Tirzepatide 30 mg, 2.5 mg shot</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+
+          <div class="grid-2">
+            <label class="field">
+              <span>Peptide name</span>
+              <input id="peptideName" type="text" value="NAD+" autocomplete="off" />
+            </label>
+            <label class="field">
+              <span>Vial amount (mg)</span>
+              <input id="vialMg" type="number" min="0.01" step="0.01" value="500" />
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label class="field">
+              <span>Dose per shot (mg)</span>
+              <input id="doseMg" type="number" min="0.001" step="0.001" value="100" />
+            </label>
+            <label class="field">
+              <span>Start date</span>
+              <input id="startDate" type="date" />
+            </label>
+          </div>
+
+          <div class="section-heading compact">
+            <h2>Schedule</h2>
+          </div>
+
+          <div class="segmented" role="tablist" aria-label="Schedule type">
+            <button class="segmented-button active" type="button" data-mode="weekly">Per week</button>
+            <button class="segmented-button" type="button" data-mode="interval">Every N days</button>
+          </div>
+
+          <div class="grid-2">
+            <label class="field schedule-field" data-for="weekly">
+              <span>Shots per week</span>
+              <input id="shotsPerWeek" type="number" min="0.1" step="0.1" value="2.5" />
+            </label>
+            <label class="field schedule-field hidden" data-for="interval">
+              <span>Every N days</span>
+              <input id="everyDays" type="number" min="1" step="1" value="3" />
+            </label>
+            <label class="field">
+              <span>Preview shots</span>
+              <input id="previewCount" type="number" min="3" max="24" step="1" value="8" />
+            </label>
+          </div>
+
+          <div class="section-heading compact">
+            <h2>Preferences</h2>
+          </div>
+
+          <div class="grid-2">
+            <label class="field">
+              <span>Max preferred units</span>
+              <input id="maxUnits" type="number" min="10" max="100" step="1" value="70" />
+            </label>
+            <label class="field">
+              <span>Ideal units</span>
+              <input id="idealUnits" type="number" min="5" max="100" step="1" value="60" />
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label class="field">
+              <span>BAC bottle size (mL)</span>
+              <input id="bacBottleMl" type="number" min="1" step="1" value="30" />
+            </label>
+            <label class="field">
+              <span>BAC use window</span>
+              <select id="bacWindowDays">
+                <option value="28">28 days</option>
+                <option value="35" selected>35 days</option>
+              </select>
+            </label>
+          </div>
+        </form>
+
+        <section class="results">
+          <article class="hero-result">
+            <p class="eyebrow">Recommended reconstitution</p>
+            <div class="hero-grid">
+              <div>
+                <h2 id="recommendedMl">3.0 mL</h2>
+                <p id="recommendedSummary">Add 3.0 mL BAC water to the vial.</p>
+              </div>
+              <div class="dose-badge">
+                <span id="recommendedUnits">60</span>
+                <small>units per shot</small>
+              </div>
+            </div>
+          </article>
+
+          <div class="stat-grid">
+            <article class="stat">
+              <span>Vial lasts</span>
+              <strong id="vialLasts">20 days</strong>
+            </article>
+            <article class="stat">
+              <span>Total shots</span>
+              <strong id="totalShots">5</strong>
+            </article>
+            <article class="stat">
+              <span>Concentration</span>
+              <strong id="concentration">166.7 mg/mL</strong>
+            </article>
+            <article class="stat">
+              <span>BAC use-by</span>
+              <strong id="bacUseBy">-</strong>
+            </article>
+          </div>
+
+          <article class="panel">
+            <div class="section-heading row">
+              <div>
+                <h2>Water options</h2>
+                <p>Sorted by closest fit to your preferred shot size.</p>
+              </div>
+            </div>
+            <div class="option-list" id="optionList"></div>
+          </article>
+
+          <article class="panel">
+            <div class="section-heading row">
+              <div>
+                <h2>Schedule preview</h2>
+                <p id="scheduleSummary">Next injections from your start date.</p>
+              </div>
+            </div>
+            <div class="schedule-list" id="scheduleList"></div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
