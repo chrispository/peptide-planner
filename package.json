@@ -1,0 +1,13 @@
+{
+  "name": "peptide-dose-planner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local peptide reconstitution and scheduling planner.",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check app.js"
+  }
+}

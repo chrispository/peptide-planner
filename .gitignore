@@ -58,3 +58,9 @@ temp/
 # Local server state
 *.pid
 *.seed
+
+# Local SQLite data
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite-*
