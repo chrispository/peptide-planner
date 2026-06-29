@@ -23,6 +23,12 @@ import { getActivePlan } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
 const mg = (value) => formatNumber(value, 3);
+const iconX = `
+  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </svg>
+`;
 
 const el = {
   saveStatus: $("saveStatus"),
@@ -46,7 +52,6 @@ const el = {
   totalShots: $("totalShots"),
   concentration: $("concentration"),
   bacUseBy: $("bacUseBy"),
-  optionList: $("optionList"),
   scheduleList: $("scheduleList"),
   scheduleSummary: $("scheduleSummary"),
   // schedule tab
@@ -124,7 +129,7 @@ export function renderTiers(plan) {
           <span>mg per dose</span>
           <input class="tier-dose" type="number" min="0.001" step="0.001" value="${tier.doseMg}" />
         </label>
-        <button class="icon-button tier-remove" type="button" aria-label="Remove phase"${plan.tiers.length === 1 ? " disabled" : ""}>×</button>
+        <button class="button button--icon icon-button tier-remove" type="button" aria-label="Remove phase"${plan.tiers.length === 1 ? " disabled" : ""}>${iconX}</button>
       </div>
       <div class="tier-caption"></div>
     `;
@@ -175,7 +180,7 @@ function renderPeptideMeta(store, plan) {
     info.commonVialsMg.forEach((value) => {
       const chip = document.createElement("button");
       chip.type = "button";
-      chip.className = `vial-chip${Math.abs(value - plan.vialMg) < 1e-6 ? " active" : ""}`;
+      chip.className = `chip vial-chip${Math.abs(value - plan.vialMg) < 1e-6 ? " active chip--active" : ""}`;
       chip.dataset.vial = String(value);
       chip.textContent = `${formatNumber(value, 0)} mg`;
       el.vialChips.appendChild(chip);
@@ -189,11 +194,11 @@ function renderPlanChips(store) {
   el.planChips.innerHTML = "";
   store.plans.forEach((plan) => {
     const chip = document.createElement("div");
-    chip.className = `plan-chip${plan.id === store.activePlanId ? " active" : ""}`;
+    chip.className = `chip plan-chip${plan.id === store.activePlanId ? " active chip--active" : ""}`;
     chip.dataset.id = plan.id;
     chip.innerHTML = `
       <button class="plan-chip-label" type="button" data-id="${plan.id}">${plan.peptideName || "Untitled"}</button>
-      ${store.plans.length > 1 ? `<button class="plan-chip-remove" type="button" data-remove="${plan.id}" aria-label="Remove peptide">×</button>` : ""}
+      ${store.plans.length > 1 ? `<button class="plan-chip-remove" type="button" data-remove="${plan.id}" aria-label="Remove peptide">${iconX}</button>` : ""}
     `;
     el.planChips.appendChild(chip);
   });
@@ -210,29 +215,8 @@ function renderReconEmpty(message) {
   el.totalShots.textContent = "0";
   el.concentration.textContent = "-";
   el.bacUseBy.textContent = "-";
-  el.optionList.innerHTML = "";
   el.scheduleList.innerHTML = "";
   el.scheduleSummary.textContent = "No schedule to preview yet.";
-}
-
-function renderOptions(result, prefs) {
-  el.optionList.innerHTML = "";
-  result.options.slice(0, 5).forEach((option) => {
-    const isBest = option === result.recommended;
-    const ok = option.maxUnits <= prefs.maxUnits;
-    const label = isBest ? "Best fit" : ok ? "Option" : "High volume";
-    const row = document.createElement("div");
-    row.className = `option${isBest ? " recommended" : ""}`;
-    row.innerHTML = `
-      <strong>${formatNumber(option.ml, 1)} mL</strong>
-      <div>
-        <p>${formatRange(option.unitsByDose)} units across ${result.doses.length} planned shots</p>
-        <p>${formatNumber(option.concentration, 1)} mg/mL concentration</p>
-      </div>
-      <span class="pill ${ok ? "good" : "warn"}">${label}</span>
-    `;
-    el.optionList.appendChild(row);
-  });
 }
 
 function renderShotList(target, shots, { showTag } = {}) {
@@ -299,7 +283,6 @@ function renderRecon(store, plan) {
   el.scheduleSummary.textContent =
     `${scheduleLabel(plan)}; ${result.doses.length} shots over ~${formatNumber(planWeeks, 0)} weeks. Needs ${vialsLabel} (${mg(result.totalMg)} mg total); each vial ${vialEndsBeforeBac ? "finishes inside" : "runs past"} the ${prefs.bacWindowDays}-day BAC window.`;
 
-  renderOptions(result, prefs);
   renderShotList(el.scheduleList, result.shots.slice(0, Math.min(prefs.previewCount, result.shots.length)));
 }
 

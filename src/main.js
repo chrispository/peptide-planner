@@ -142,8 +142,14 @@ document.getElementById("aiLookupBtn").addEventListener("click", async (event) =
   }
 
   button.disabled = true;
-  const originalLabel = button.textContent;
-  button.textContent = "Looking up…";
+  const originalLabel = button.innerHTML;
+  button.innerHTML = `
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+    Looking up...
+  `;
   try {
     const data = await fetchPeptideInfo(name);
     if (!data.known || !data.info) {
@@ -160,7 +166,7 @@ document.getElementById("aiLookupBtn").addEventListener("click", async (event) =
     document.getElementById("peptideNote").textContent = error.message || "AI lookup failed.";
   } finally {
     button.disabled = false;
-    button.textContent = originalLabel;
+    button.innerHTML = originalLabel;
   }
 });
 
