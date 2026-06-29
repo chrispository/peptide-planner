@@ -58,6 +58,33 @@ test("buildDosePlan splits across multiple vials when the plan exceeds one", () 
   assert.equal(lastVialLeftover, 20);
 });
 
+test("buildDosePlan tracks unused medication across opened vials", () => {
+  const result = buildDosePlan(
+    plan({
+      vialMg: 500,
+      flexibleDose: true,
+      scheduleMode: "interval",
+      everyDays: 3,
+      tiers: [
+        { weeks: 1, count: 1, doseMg: 75 },
+        { weeks: 1, count: 1, doseMg: 100 },
+        { weeks: 1, count: 1, doseMg: 125 },
+        { weeks: 1, count: 14, doseMg: 150 },
+      ],
+    }),
+  );
+  assert.equal(result.totalMg, 2400);
+  assert.equal(result.vialsNeeded, 6);
+  assert.equal(result.lastVialLeftover, 600);
+  assert.deepEqual(
+    result.cleanupSuggestions.slice(0, 2).map((s) => ({ vialNumber: s.vialNumber, shotIndex: s.shotIndex, addedMg: s.addedMg })),
+    [
+      { vialNumber: 1, shotIndex: 3, addedMg: 50 },
+      { vialNumber: 2, shotIndex: 6, addedMg: 50 },
+    ],
+  );
+});
+
 test("computePlan recommends the canonical NAD+ reconstitution", () => {
   const result = computePlan(plan(), PREFS);
   assert.equal(result.empty, false);
@@ -77,6 +104,9 @@ test("computePlan keeps every shot within a 100-unit syringe", () => {
 test("computePlan dates shots from the start date at the cadence interval", () => {
   const result = computePlan(plan({ startDate: "2026-01-01", shotsPerWeek: 2 }), PREFS);
   assert.equal(result.shots[0].date.getFullYear(), 2026);
+  assert.equal(result.shots[0].bacOpened, true);
+  assert.equal(result.shots[0].bacExpires.toISOString().slice(0, 10), "2026-02-05");
+  assert.equal(result.shots[1].bacOpened, false);
   // 2x/week => 3.5 day spacing, rounded: shot 3 lands 7 days out.
   const days = Math.round((result.shots[2].date - result.shots[0].date) / 86_400_000);
   assert.equal(days, 7);

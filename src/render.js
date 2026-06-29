@@ -21,7 +21,7 @@ import {
   mergeSchedule,
   summarizeDoses,
 } from "./calc.js";
-import { lookupPeptide, PEPTIDE_NAMES } from "./peptides.js";
+import { lookupPeptide } from "./peptides.js";
 import { getActivePlan } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
@@ -36,20 +36,20 @@ const iconX = `
 const el = {
   saveStatus: $("saveStatus"),
   planChips: $("planChips"),
-  peptideList: $("peptideList"),
   peptideName: $("peptideName"),
   vialMg: $("vialMg"),
   startDate: $("startDate"),
   shotsPerWeek: $("shotsPerWeek"),
   everyDays: $("everyDays"),
+  flexibleDose: $("flexibleDose"),
   peptideNote: $("peptideNote"),
-  vialChips: $("vialChips"),
   aiLookupBtn: $("aiLookupBtn"),
   tierList: $("tierList"),
   phaseLastShot: $("phaseLastShot"),
   phaseVials: $("phaseVials"),
   phaseLeftoverRow: $("phaseLeftoverRow"),
   phaseLeftover: $("phaseLeftover"),
+  phaseSuggestion: $("phaseSuggestion"),
   // recon outputs
   recommendedMl: $("recommendedMl"),
   recommendedSummary: $("recommendedSummary"),
@@ -78,20 +78,17 @@ export function setSaveStatus(text) {
   el.saveStatus.textContent = text;
 }
 
-export function renderPeptideDatalist() {
-  el.peptideList.innerHTML = PEPTIDE_NAMES.map((name) => `<option value="${name}"></option>`).join("");
-}
-
 // ---- Form writers (targeted, never blanket) -------------------------------
 
 // Full plan -> inputs. Only call when no field is being edited (plan switch,
-// load, vial-chip click, AI lookup).
+// load, AI lookup).
 export function writeFormValues(plan) {
   el.peptideName.value = plan.peptideName;
   el.vialMg.value = plan.vialMg;
   el.startDate.value = plan.startDate;
   el.shotsPerWeek.value = plan.shotsPerWeek;
   el.everyDays.value = plan.everyDays;
+  el.flexibleDose.checked = Boolean(plan.flexibleDose);
 }
 
 // Schedule mode + cadence only — safe to call while the peptide-name field is
@@ -202,17 +199,6 @@ function renderPeptideMeta(store, plan) {
     el.aiLookupBtn.classList.toggle("hidden", !hasName);
   }
 
-  el.vialChips.innerHTML = "";
-  if (info) {
-    info.commonVialsMg.forEach((value) => {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = `chip vial-chip${Math.abs(value - plan.vialMg) < 1e-6 ? " active chip--active" : ""}`;
-      chip.dataset.vial = String(value);
-      chip.textContent = `${formatNumber(value, 0)} mg`;
-      el.vialChips.appendChild(chip);
-    });
-  }
 }
 
 // ---- Plan switcher --------------------------------------------------------
@@ -246,6 +232,8 @@ function renderReconEmpty(message) {
   el.phaseVials.textContent = "-";
   el.phaseLeftover.textContent = "-";
   el.phaseLeftoverRow.classList.add("hidden");
+  el.phaseSuggestion.textContent = "";
+  el.phaseSuggestion.classList.add("hidden");
   el.scheduleList.innerHTML = "";
   el.scheduleSummary.textContent = "No schedule to preview yet.";
 }
@@ -253,6 +241,24 @@ function renderReconEmpty(message) {
 function renderShotList(target, shots, { showTag } = {}) {
   target.innerHTML = "";
   shots.forEach((shot) => {
+    if (shot.bacOpened) {
+      const marker = document.createElement("div");
+      marker.className = "vial-marker bac";
+      marker.innerHTML = `
+        <span>BAC water opened</span>
+        <strong>Expires ${formatDate(shot.bacExpires)}</strong>
+      `;
+      target.appendChild(marker);
+    }
+    if (shot.opensVial) {
+      const marker = document.createElement("div");
+      marker.className = "vial-marker";
+      const peptide = shot.peptideName ? `${shot.peptideName} ` : "";
+      marker.innerHTML = `
+        <span>Open ${peptide}vial ${shot.vialNumber}</span>
+      `;
+      target.appendChild(marker);
+    }
     const meta = showTag
       ? `<span class="shot-tag">${shot.peptideName}</span>${mg(shot.doseMg)} mg`
       : `${mg(shot.doseMg)} mg · phase ${shot.tierIndex + 1}`;
@@ -267,6 +273,16 @@ function renderShotList(target, shots, { showTag } = {}) {
       <span class="pill">${shot.units != null ? `${formatNumber(shot.units, 1)} units` : "-"}</span>
     `;
     target.appendChild(row);
+    if (shot.endsVial) {
+      const marker = document.createElement("div");
+      marker.className = "vial-marker end";
+      const peptide = shot.peptideName ? `${shot.peptideName} ` : "";
+      marker.innerHTML = `
+        <span>End ${peptide}vial ${shot.endsVial.vialNumber}</span>
+        <strong>${mg(shot.endsVial.unusedMg)} mg unused</strong>
+      `;
+      target.appendChild(marker);
+    }
   });
 }
 
@@ -308,6 +324,18 @@ function renderRecon(store, plan) {
   el.phaseVials.textContent = vialsLabel;
   el.phaseLeftover.textContent = `${mg(result.lastVialLeftover)} mg`;
   el.phaseLeftoverRow.classList.toggle("hidden", result.lastVialLeftover <= 0.001);
+  if (plan.flexibleDose && result.cleanupSuggestions.length > 0) {
+    const suggestion = result.cleanupSuggestions[0];
+    const more = result.cleanupSuggestions.length > 1 ? ` ${result.cleanupSuggestions.length - 1} more vial cleanup suggestion${result.cleanupSuggestions.length === 2 ? "" : "s"} available.` : "";
+    el.phaseSuggestion.textContent =
+      `Clean vial ${suggestion.vialNumber}: make shot ${suggestion.shotIndex + 1} ${mg(suggestion.suggestedDoseMg)} mg (+${mg(suggestion.addedMg)} mg).${more}`;
+    el.phaseSuggestion.classList.remove("hidden");
+  } else {
+    el.phaseSuggestion.textContent = plan.flexibleDose
+      ? "No small cleanup adjustment found for the current vial breaks."
+      : "Flexible dose is off; vial cleanup suggestions are hidden.";
+    el.phaseSuggestion.classList.remove("hidden");
+  }
   el.scheduleSummary.textContent =
     `${scheduleLabel(plan)}; ${result.doses.length} shots over ~${formatNumber(planWeeks, 0)} weeks. Needs ${vialsLabel} (${mg(result.totalMg)} mg total); each vial ${vialEndsBeforeBac ? "finishes inside" : "runs past"} the ${prefs.bacWindowDays}-day BAC window.`;
 

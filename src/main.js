@@ -16,7 +16,6 @@ import {
 } from "./state.js";
 import { createPersistence, fetchPeptideInfo } from "./persistence.js";
 import {
-  renderPeptideDatalist,
   renderOutputs,
   renderAll,
   renderTiers,
@@ -46,6 +45,7 @@ function readActivePlan() {
   plan.startDate = document.getElementById("startDate").value || plan.startDate;
   plan.shotsPerWeek = Math.max(0.1, num(document.getElementById("shotsPerWeek").value, plan.shotsPerWeek));
   plan.everyDays = Math.max(1, num(document.getElementById("everyDays").value, plan.everyDays));
+  plan.flexibleDose = document.getElementById("flexibleDose").checked;
 }
 
 function readPrefs() {
@@ -93,6 +93,9 @@ function maybeApplyPeptideDefaults(plan, previousName) {
   }
   if (info.schedule.everyDays) {
     plan.everyDays = info.schedule.everyDays;
+  }
+  if (typeof info.flexibleDose === "boolean") {
+    plan.flexibleDose = info.flexibleDose;
   }
 }
 
@@ -186,18 +189,6 @@ document.getElementById("aiLookupBtn").addEventListener("click", async (event) =
   }
 });
 
-document.getElementById("vialChips").addEventListener("click", (event) => {
-  const chip = event.target.closest(".vial-chip");
-  const plan = getActivePlan(store);
-  if (!chip || !plan) {
-    return;
-  }
-  plan.vialMg = num(chip.dataset.vial, plan.vialMg);
-  writeFormValues(plan);
-  renderOutputs(store);
-  persistence.scheduleSave();
-});
-
 document.getElementById("planChips").addEventListener("click", (event) => {
   const removeButton = event.target.closest(".plan-chip-remove");
   if (removeButton) {
@@ -222,6 +213,7 @@ document.getElementById("addPlan").addEventListener("click", () => {
     peptideName: "Tirzepatide",
     vialMg: 30,
     shotsPerWeek: 1,
+    flexibleDose: false,
     tiers: [{ weeks: 12, count: 12, doseMg: 2.5 }],
   });
   maybeApplyPeptideDefaults(plan, "");
@@ -323,7 +315,6 @@ function setTheme(theme) {
 
 // ---- Boot -----------------------------------------------------------------
 
-renderPeptideDatalist();
 setTheme(localStorage.getItem("peptide-planner-theme") || "light");
 writePrefs(store.prefs);
 setActiveTab(store.activeTab);

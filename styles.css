@@ -225,7 +225,6 @@ p {
 }
 
 .chip,
-.vial-chip,
 .plan-chip {
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
@@ -238,13 +237,11 @@ p {
 }
 
 .chip:hover,
-.vial-chip:hover,
 .plan-chip:hover {
   border-color: var(--color-accent-border);
 }
 
 .chip--active,
-.vial-chip.active,
 .plan-chip.active {
   border-color: var(--color-accent);
   background: var(--color-accent);
@@ -572,6 +569,12 @@ select:focus {
   box-shadow: 0 0 0 3px var(--color-focus);
 }
 
+input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  accent-color: var(--color-accent);
+}
+
 .grid-2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -591,19 +594,6 @@ select:focus {
 .ghost-button {
   width: 100%;
   margin-top: var(--space-3);
-}
-
-.vial-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: var(--space-3);
-}
-
-.vial-chip {
-  padding: 5px 11px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
 }
 
 .empty-hint {
@@ -673,6 +663,14 @@ select:focus {
   font-variant-numeric: tabular-nums;
 }
 
+.phase-summary-note {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .tier-index {
   display: grid;
   place-items: center;
@@ -685,6 +683,31 @@ select:focus {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
+}
+
+.toggle-field {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+}
+
+.toggle-field strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.toggle-field small {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 /* ---- Segmented ---- */
@@ -854,6 +877,33 @@ select:focus {
   padding: 12px 2px;
 }
 
+.vial-marker {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 8px 2px;
+  color: var(--color-accent-strong);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.vial-marker.end {
+  color: var(--color-text-subtle);
+}
+
+.vial-marker.bac {
+  color: var(--color-warning);
+}
+
+.vial-marker span {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.vial-marker strong {
+  font-weight: 500;
+}
+
 .shot-number {
   display: grid;
   place-items: center;
@@ -944,20 +994,33 @@ select:focus {
 }
 
 #schedulePanel .hero-result {
-  padding: 18px 20px;
+  padding: 14px 18px;
 }
 
 #schedulePanel .hero-result h2 {
   margin-bottom: 5px;
-  font-size: clamp(22px, 3.4vw, 30px);
+  font-size: 22px;
 }
 
 #schedulePanel .dose-badge {
-  width: 96px;
+  width: 74px;
+  padding: var(--space-2);
 }
 
 #schedulePanel .dose-badge span {
-  font-size: 26px;
+  font-size: 22px;
+}
+
+#schedulePanel .dose-badge small {
+  font-size: 8.5px;
+}
+
+#schedulePanel .hero-grid {
+  gap: var(--space-4);
+}
+
+#schedulePanel .hero-result p:not(.eyebrow) {
+  font-size: 12px;
 }
 
 /* ---- Print: clean single-vial reconstitution card ---- */

@@ -53,26 +53,60 @@ export function buildDosePlan(plan) {
     }
   });
 
-  let vialsNeeded = doses.length > 0 ? 1 : 0;
+  let vialsNeeded = 0;
   let vialRemaining = vialMg;
   let firstVialDoses = 0;
-  let onFirstVial = true;
+  let unusedAcrossOpenedVials = 0;
+  let currentVial = 1;
+  const cleanupSuggestions = [];
 
-  doses.forEach((dose) => {
+  doses.forEach((dose, index) => {
     if (dose.doseMg > vialRemaining + 1e-6) {
-      vialsNeeded += 1;
+      const previous = doses[index - 1];
+      if (previous) {
+        const unusedMg = Math.max(0, vialRemaining);
+        previous.endsVial = { vialNumber: currentVial, unusedMg };
+        unusedAcrossOpenedVials += unusedMg;
+        if (plan.flexibleDose && unusedMg > 0.001 && unusedMg <= previous.doseMg * 0.5) {
+          cleanupSuggestions.push({
+            vialNumber: currentVial,
+            shotIndex: index - 1,
+            originalDoseMg: previous.doseMg,
+            suggestedDoseMg: previous.doseMg + unusedMg,
+            addedMg: unusedMg,
+          });
+        }
+      }
+      currentVial += 1;
       vialRemaining = vialMg;
-      onFirstVial = false;
     }
+    dose.vialNumber = currentVial;
+    dose.opensVial = index === 0 || doses[index - 1]?.endsVial != null;
     vialRemaining -= dose.doseMg;
-    if (onFirstVial) {
+    dose.vialRemainingAfter = Math.max(0, vialRemaining);
+    if (currentVial === 1) {
       firstVialDoses += 1;
     }
   });
 
-  const lastVialLeftover = vialsNeeded > 0 ? Math.max(0, vialMg * vialsNeeded - totalMg) : 0;
+  if (doses.length > 0) {
+    const last = doses[doses.length - 1];
+    const unusedMg = Math.max(0, vialRemaining);
+    last.endsVial = { vialNumber: currentVial, unusedMg };
+    unusedAcrossOpenedVials += unusedMg;
+    if (plan.flexibleDose && unusedMg > 0.001 && unusedMg <= last.doseMg * 0.5) {
+      cleanupSuggestions.push({
+        vialNumber: currentVial,
+        shotIndex: doses.length - 1,
+        originalDoseMg: last.doseMg,
+        suggestedDoseMg: last.doseMg + unusedMg,
+        addedMg: unusedMg,
+      });
+    }
+    vialsNeeded = currentVial;
+  }
 
-  return { doses, totalMg, vialsNeeded, firstVialDoses, lastVialLeftover };
+  return { doses, totalMg, vialsNeeded, firstVialDoses, lastVialLeftover: unusedAcrossOpenedVials, cleanupSuggestions };
 }
 
 // Score candidate BAC water volumes by how close the typical shot lands to the
@@ -113,7 +147,7 @@ export function buildWaterOptions(vialMg, doses, prefs) {
 // doses, or { recommended: null } when nothing fits a 100-unit syringe.
 export function computePlan(plan, prefs) {
   const vialMg = Math.max(0.01, plan.vialMg);
-  const { doses, totalMg, vialsNeeded, firstVialDoses, lastVialLeftover } = buildDosePlan(plan);
+  const { doses, totalMg, vialsNeeded, firstVialDoses, lastVialLeftover, cleanupSuggestions } = buildDosePlan(plan);
 
   if (doses.length === 0) {
     return { empty: true };
@@ -132,6 +166,12 @@ export function computePlan(plan, prefs) {
     date: addDays(startDate, Math.round(index * interval)),
     doseMg: dose.doseMg,
     tierIndex: dose.tierIndex,
+    bacOpened: index === 0,
+    bacExpires: index === 0 ? bacUseBy : null,
+    vialNumber: dose.vialNumber,
+    opensVial: dose.opensVial,
+    endsVial: dose.endsVial,
+    vialRemainingAfter: dose.vialRemainingAfter,
     units: recommended ? recommended.unitsByDose[index] : null,
   }));
 
@@ -144,6 +184,7 @@ export function computePlan(plan, prefs) {
     vialsNeeded,
     firstVialDoses,
     lastVialLeftover,
+    cleanupSuggestions,
     interval,
     options,
     recommended,
