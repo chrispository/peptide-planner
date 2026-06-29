@@ -73,17 +73,6 @@
 
             <div class="section-heading compact row">
               <div>
-                <h2>Suggested doses</h2>
-                <p>Pick a dose to fill the vial, or maximize for the closest clean fit.</p>
-              </div>
-              <button class="small-button accent" id="maximizeBtn" type="button">Maximize vial</button>
-            </div>
-
-            <div class="suggestion-list" id="suggestionList"></div>
-            <button class="ghost-button hidden" id="titrationBtn" type="button">Build titration ladder</button>
-
-            <div class="section-heading compact row">
-              <div>
                 <h2>Dose phases</h2>
                 <p>Set each phase in weeks; doses follow your cadence. Phases run in order until the vial runs out.</p>
               </div>
@@ -158,6 +147,7 @@
                 <div>
                   <h2 id="recommendedMl">3.0 mL</h2>
                   <p id="recommendedSummary">Add 3.0 mL BAC water to the vial.</p>
+                  <p class="hero-perweek" id="recommendedPerWeek"></p>
                 </div>
                 <div class="dose-badge">
                   <span id="recommendedUnits">60</span>

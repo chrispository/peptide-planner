@@ -5,7 +5,11 @@ const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 
 const rootDir = __dirname;
-const dataDir = path.join(rootDir, "data");
+// SHOTS_DATA_DIR lets testing/dev point at a throwaway location so the real
+// saved planner in ./data is never touched. Defaults to ./data.
+const dataDir = process.env.SHOTS_DATA_DIR
+  ? path.resolve(process.env.SHOTS_DATA_DIR)
+  : path.join(rootDir, "data");
 const dbPath = path.join(dataDir, "shots.sqlite");
 const port = Number(process.env.PORT || 4173);
 

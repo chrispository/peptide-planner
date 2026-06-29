@@ -59,9 +59,6 @@ const addPlanButton = document.getElementById("addPlan");
 const peptideList = document.getElementById("peptideList");
 const peptideNote = document.getElementById("peptideNote");
 const vialChips = document.getElementById("vialChips");
-const suggestionList = document.getElementById("suggestionList");
-const maximizeBtn = document.getElementById("maximizeBtn");
-const titrationBtn = document.getElementById("titrationBtn");
 const aiLookupBtn = document.getElementById("aiLookupBtn");
 
 // Peptides fetched at runtime via the AI lookup endpoint. Same shape as
@@ -91,6 +88,7 @@ const output = {
   saveStatus: document.getElementById("saveStatus"),
   recommendedMl: document.getElementById("recommendedMl"),
   recommendedSummary: document.getElementById("recommendedSummary"),
+  recommendedPerWeek: document.getElementById("recommendedPerWeek"),
   recommendedUnits: document.getElementById("recommendedUnits"),
   vialLasts: document.getElementById("vialLasts"),
   totalShots: document.getElementById("totalShots"),
@@ -241,21 +239,50 @@ function unitRange(units) {
   return `${formatNumber(min, 1)}-${formatNumber(max, 1)}`;
 }
 
+function numericRange(values, digits = 1) {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (Math.abs(min - max) < 0.01) {
+    return formatNumber(max, digits);
+  }
+  return `${formatNumber(min, digits)}–${formatNumber(max, digits)}`;
+}
+
 function buildDosePlan(tiers, vialMg) {
+  // The full plan is every dose across every phase — the schedule runs for all
+  // the weeks entered, not just one vial's worth. The vial is the container.
   const dosePlan = [];
-  let usedMg = 0;
+  let totalMg = 0;
 
   tiers.forEach((tier, tierIndex) => {
     for (let index = 0; index < tier.count; index += 1) {
-      if (usedMg + tier.doseMg > vialMg + 0.000001) {
-        return;
-      }
       dosePlan.push({ doseMg: tier.doseMg, tierIndex, plannedIndex: index });
-      usedMg += tier.doseMg;
+      totalMg += tier.doseMg;
     }
   });
 
-  return { dosePlan, usedMg, remainingMg: Math.max(0, vialMg - usedMg) };
+  // Walk the doses to see how many vials the plan needs and how many doses the
+  // first vial covers (each vial is reconstituted the same way).
+  let vialsNeeded = dosePlan.length > 0 ? 1 : 0;
+  let vialRemaining = vialMg;
+  let firstVialDoses = 0;
+  let onFirstVial = true;
+
+  dosePlan.forEach((dose) => {
+    if (dose.doseMg > vialRemaining + 1e-6) {
+      vialsNeeded += 1;
+      vialRemaining = vialMg;
+      onFirstVial = false;
+    }
+    vialRemaining -= dose.doseMg;
+    if (onFirstVial) {
+      firstVialDoses += 1;
+    }
+  });
+
+  const lastVialLeftover = vialsNeeded > 0 ? Math.max(0, vialMg * vialsNeeded - totalMg) : 0;
+
+  return { dosePlan, usedMg: totalMg, totalMg, vialsNeeded, firstVialDoses, lastVialLeftover };
 }
 
 function buildWaterOptions(vialMg, dosePlan, idealUnits, maxUnits) {
@@ -299,7 +326,8 @@ function buildWaterOptions(vialMg, dosePlan, idealUnits, maxUnits) {
 // option, dated shots, and cadence. Returns { empty: true } when no dose fits.
 function computePlan(plan) {
   const vialMg = Math.max(0.01, plan.vialMg);
-  const { dosePlan, usedMg, remainingMg } = buildDosePlan(plan.tiers, vialMg);
+  const { dosePlan, usedMg, totalMg, vialsNeeded, firstVialDoses, lastVialLeftover } =
+    buildDosePlan(plan.tiers, vialMg);
 
   if (dosePlan.length === 0) {
     return { empty: true };
@@ -310,7 +338,9 @@ function computePlan(plan) {
   const recommended = options[0] || null;
   const startDate = parseStartDate(plan.startDate);
   const bacUseBy = addDays(startDate, prefs.bacWindowDays);
-  const vialDurationDays = Math.max(0, Math.round((dosePlan.length - 1) * intervalDays));
+  // How long ONE vial lasts (until you reconstitute the next), and the whole plan.
+  const vialDurationDays = Math.max(0, Math.round((Math.max(1, firstVialDoses) - 1) * intervalDays));
+  const planDurationDays = Math.max(0, Math.round((dosePlan.length - 1) * intervalDays));
 
   const shots = dosePlan.map((dose, index) => ({
     index,
@@ -326,98 +356,20 @@ function computePlan(plan) {
     vialMg,
     dosePlan,
     usedMg,
-    remainingMg,
+    totalMg,
+    vialsNeeded,
+    firstVialDoses,
+    lastVialLeftover,
     intervalDays,
     options,
     recommended,
     startDate,
     bacUseBy,
     vialDurationDays,
+    planDurationDays,
     shots,
     lastShotDate: shots[shots.length - 1].date,
   };
-}
-
-// ---- Suggested doses / maximize -------------------------------------------
-
-function buildDoseSuggestions(plan) {
-  const info = lookupPeptide(plan.peptideName);
-  const steps = new Set();
-  if (info) {
-    info.doseStepsMg.forEach((step) => steps.add(step));
-  }
-  // Always include whatever the user is currently dosing so it stays selectable.
-  plan.tiers.forEach((tier) => steps.add(tier.doseMg));
-
-  const vialMg = Math.max(0.01, plan.vialMg);
-  const list = [...steps]
-    .filter((dose) => dose > 0 && dose <= vialMg + 1e-6)
-    .sort((a, b) => a - b)
-    .map((dose) => {
-      const count = Math.floor(vialMg / dose + 1e-6);
-      const used = count * dose;
-      return { dose, count, used, remainder: Math.max(0, vialMg - used) };
-    })
-    .filter((item) => item.count >= 1);
-
-  if (list.length === 0) {
-    return { list: [], best: null };
-  }
-
-  // "Maximize" = smallest leftover. On a tie, prefer the dose closest to this
-  // peptide's typical dose (so NAD+ 500 mg picks 100 mg, not 25 mg x20).
-  const targetDose = info ? info.defaultDoseMg : Math.max(...plan.tiers.map((tier) => tier.doseMg));
-  const best = list.reduce((a, b) => {
-    if (b.remainder < a.remainder - 1e-6) return b;
-    if (Math.abs(b.remainder - a.remainder) <= 1e-6) {
-      return Math.abs(b.dose - targetDose) < Math.abs(a.dose - targetDose) ? b : a;
-    }
-    return a;
-  });
-
-  return { list, best };
-}
-
-function applyDose(dose) {
-  const plan = getActivePlan();
-  const vialMg = Math.max(0.01, plan.vialMg);
-  const count = Math.max(1, Math.floor(vialMg / dose + 1e-6));
-  plan.tiers = [{ count, doseMg: dose }];
-  refreshActivePlan({ tiers: true });
-  scheduleSave();
-}
-
-function buildTitration() {
-  const plan = getActivePlan();
-  const info = lookupPeptide(plan.peptideName);
-  if (!info) {
-    return;
-  }
-
-  const vialMg = Math.max(0.01, plan.vialMg);
-  const dosesPerStep = 4; // ~4 weeks at one shot per week before stepping up.
-  const tiers = [];
-  let remaining = vialMg;
-
-  for (const dose of info.doseStepsMg) {
-    if (dose > remaining + 1e-6) {
-      break;
-    }
-    const fit = Math.min(dosesPerStep, Math.floor(remaining / dose + 1e-6));
-    if (fit < 1) {
-      break;
-    }
-    tiers.push({ count: fit, doseMg: dose });
-    remaining -= fit * dose;
-  }
-
-  if (tiers.length === 0) {
-    return;
-  }
-
-  plan.tiers = tiers;
-  refreshActivePlan({ tiers: true });
-  scheduleSave();
 }
 
 // ---- Rendering: reconstitution --------------------------------------------
@@ -469,34 +421,6 @@ function renderPeptideMeta(plan) {
       vialChips.appendChild(chip);
     });
   }
-}
-
-function renderSuggestions(plan) {
-  const { list, best } = buildDoseSuggestions(plan);
-  suggestionList.innerHTML = "";
-
-  if (list.length === 0) {
-    suggestionList.innerHTML = `<p class="empty-hint">Enter a vial amount to see dose suggestions.</p>`;
-  } else {
-    list.forEach((item) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      const isBest = best && item.dose === best.dose;
-      button.className = `suggestion${isBest ? " best" : ""}`;
-      button.dataset.dose = String(item.dose);
-      const leftover = item.remainder > 0.001 ? `${formatNumber(item.remainder, 3)} mg left` : "no waste";
-      button.innerHTML = `
-        <strong>${formatNumber(item.dose, 3)} mg</strong>
-        <span>${item.count} ${item.count === 1 ? "dose" : "doses"}</span>
-        <small>${leftover}</small>
-        ${isBest ? `<span class="suggestion-tag">Best fill</span>` : ""}
-      `;
-      suggestionList.appendChild(button);
-    });
-  }
-
-  const info = lookupPeptide(plan.peptideName);
-  titrationBtn.classList.toggle("hidden", !(info && info.titrating));
 }
 
 function renderTiers(plan) {
@@ -598,7 +522,8 @@ function renderShotList(target, shots, peptideName) {
 function renderReconEmpty() {
   output.recommendedMl.textContent = "-";
   output.recommendedUnits.textContent = "-";
-  output.recommendedSummary.textContent = "Add at least one dose tier that fits inside the vial amount.";
+  output.recommendedSummary.textContent = "Add at least one dose phase to build a plan.";
+  output.recommendedPerWeek.textContent = "";
   output.vialLasts.textContent = "-";
   output.totalShots.textContent = "0";
   output.concentration.textContent = "-";
@@ -621,6 +546,7 @@ function renderReconResults(plan) {
     output.recommendedUnits.textContent = "-";
     output.recommendedSummary.textContent =
       "No water amount keeps this plan within a 100-unit syringe. Lower the dose or raise the vial water amount.";
+    output.recommendedPerWeek.textContent = "";
     output.optionList.innerHTML = "";
     output.scheduleList.innerHTML = "";
     return;
@@ -628,16 +554,27 @@ function renderReconResults(plan) {
 
   const recommended = result.recommended;
   const vialEndsBeforeBac = result.vialDurationDays <= prefs.bacWindowDays;
-  const waterUsedPercent = (recommended.ml / Math.max(1, prefs.bacBottleMl)) * 100;
-  const remainingNote = result.remainingMg > 0.001
-    ? ` ${formatNumber(result.remainingMg, 3)} mg remains unplanned.`
-    : "";
-  const summary = `${scheduleLabel(plan)}; vial ${vialEndsBeforeBac ? "finishes inside" : "runs past"} the ${formatNumber(prefs.bacWindowDays, 0)}-day BAC window. Uses ${formatNumber(waterUsedPercent, 1)}% of a ${formatNumber(prefs.bacBottleMl, 1)} mL BAC bottle and ${formatNumber(result.usedMg, 3)} mg of peptide.`;
+  const planWeeks = result.planDurationDays / 7;
+  const vialsLabel = result.vialsNeeded === 1 ? "1 vial" : `${result.vialsNeeded} vials`;
+  const vialsNote = result.vialsNeeded > 1
+    ? ` Reconstitute each of the ${result.vialsNeeded} vials the same way.`
+    : result.lastVialLeftover > 0.001
+      ? ` ${formatNumber(result.lastVialLeftover, 3)} mg left unused in the vial.`
+      : "";
+  const summary = `${scheduleLabel(plan)}; ${formatNumber(result.dosePlan.length, 0)} shots over ~${formatNumber(planWeeks, 0)} weeks. Needs ${vialsLabel} (${formatNumber(result.totalMg, 3)} mg total); each vial ${vialEndsBeforeBac ? "finishes inside" : "runs past"} the ${formatNumber(prefs.bacWindowDays, 0)}-day BAC window.`;
+
+  // Weekly dose at this cadence (per phase dose), shown as mg and units per week.
+  const dpw = dosesPerWeek(plan);
+  const distinctDoses = [...new Set(result.dosePlan.map((dose) => dose.doseMg))].sort((a, b) => a - b);
+  const mgPerWeek = distinctDoses.map((dose) => dose * dpw);
+  const unitsPerWeek = distinctDoses.map((dose) => (dose / recommended.concentration) * 100 * dpw);
 
   output.recommendedMl.textContent = `${formatNumber(recommended.ml, 1)} mL`;
   output.recommendedUnits.textContent = unitRange(recommended.unitsByDose);
   output.recommendedSummary.textContent =
-    `Add ${formatNumber(recommended.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"} for ${tierSummary(result.dosePlan)}.${remainingNote}`;
+    `Add ${formatNumber(recommended.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"} for ${tierSummary(result.dosePlan)}.${vialsNote}`;
+  output.recommendedPerWeek.textContent =
+    `≈ ${numericRange(mgPerWeek, 3)} mg / week · ${numericRange(unitsPerWeek, 0)} units / week (${formatNumber(dpw, 1)}x weekly)`;
   output.vialLasts.textContent = `${formatNumber(result.vialDurationDays, 0)} days`;
   output.totalShots.textContent = formatNumber(result.dosePlan.length, 0);
   output.concentration.textContent = `${formatNumber(recommended.concentration, 1)} mg/mL`;
@@ -663,12 +600,17 @@ function renderScheduleTab() {
     output.planSummaryList.innerHTML = `<p class="empty-hint">No peptide has a valid plan yet.</p>`;
   }
   computed.forEach(({ plan, result }) => {
+    const vialsLabel = result.vialsNeeded === 1 ? "1 vial" : `${result.vialsNeeded} vials`;
     const row = document.createElement("div");
     row.className = "plan-summary";
     row.innerHTML = `
       <div>
         <div class="plan-summary-name">${plan.peptideName || "Untitled"}</div>
         <div class="plan-summary-meta">${tierSummary(result.dosePlan)} · ${scheduleLabel(plan)}</div>
+      </div>
+      <div class="plan-summary-stat">
+        <strong>${formatNumber(result.totalMg, 3)} mg</strong>
+        <small>${vialsLabel}</small>
       </div>
       <div class="plan-summary-stat">
         <strong>${formatNumber(recommendedMlAvg(result), 1)} mL</strong>
@@ -760,7 +702,6 @@ function refreshActivePlan(opts = {}) {
     writePlanToForm(plan);
   }
   renderPeptideMeta(plan);
-  renderSuggestions(plan);
   if (opts.tiers || opts.form !== false) {
     renderTiers(plan);
   }
@@ -1030,23 +971,6 @@ addTierButton.addEventListener("click", () => {
   refreshActivePlan({ tiers: true });
   scheduleSave();
 });
-
-suggestionList.addEventListener("click", (event) => {
-  const button = event.target.closest(".suggestion");
-  if (!button) {
-    return;
-  }
-  applyDose(numberValue(button.dataset.dose, 0));
-});
-
-maximizeBtn.addEventListener("click", () => {
-  const { best } = buildDoseSuggestions(getActivePlan());
-  if (best) {
-    applyDose(best.dose);
-  }
-});
-
-titrationBtn.addEventListener("click", buildTitration);
 
 aiLookupBtn.addEventListener("click", async () => {
   const plan = getActivePlan();

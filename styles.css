@@ -540,71 +540,6 @@ select:focus {
   color: var(--surface);
 }
 
-.suggestion-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
-  gap: 9px;
-}
-
-.suggestion {
-  position: relative;
-  display: grid;
-  gap: 3px;
-  padding: 11px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  text-align: left;
-  transition: border-color 120ms ease, background 120ms ease;
-}
-
-.suggestion:hover {
-  border-color: var(--ink-3);
-  background: var(--surface);
-}
-
-.suggestion.best {
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
-}
-
-.suggestion strong {
-  font-family: var(--mono);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.suggestion span {
-  font-size: 12px;
-  color: var(--ink-2);
-}
-
-.suggestion small {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--ink-3);
-}
-
-.suggestion-tag {
-  position: absolute;
-  top: -8px;
-  right: 9px;
-  padding: 1px 7px;
-  border-radius: 4px;
-  background: var(--accent);
-  color: #fff;
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-:root.dark .suggestion-tag {
-  color: #0c0c0d;
-}
-
 .empty-hint {
   color: var(--ink-3);
   font-size: 12.5px;
@@ -722,6 +657,20 @@ select:focus {
   font-size: 13px;
   line-height: 1.5;
   max-width: 38ch;
+}
+
+.hero-perweek {
+  margin-top: 12px !important;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink) !important;
+  letter-spacing: -0.01em;
+}
+
+.hero-perweek:empty {
+  display: none;
 }
 
 .dose-badge {
@@ -932,8 +881,8 @@ select:focus {
 
 .plan-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 20px;
   align-items: center;
   padding: 14px 2px;
 }
