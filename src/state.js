@@ -1,12 +1,12 @@
 // The app's data model and (de)serialization. One `store` holds shared prefs and
 // the list of peptide plans; the rest of the app reads it and calls these
-// helpers to mutate it. Tiers are stored in WEEKS (what the user actually edits);
-// the engine converts weeks -> doses using the plan's cadence.
+// helpers to mutate it. Tiers keep both calendar weeks and shot counts:
+// weekly schedules edit weeks, interval schedules edit count.
 
 import { dateInputValue } from "./format.js";
 import { dosesPerWeek } from "./calc.js";
 
-export const STATE_VERSION = 3;
+export const STATE_VERSION = 4;
 
 export const DEFAULT_PREFS = {
   previewCount: 8,
@@ -40,25 +40,28 @@ export function createPlan(overrides = {}) {
     scheduleMode: "weekly",
     shotsPerWeek: 2,
     everyDays: 3,
-    tiers: [{ weeks: 2.5, doseMg: 100 }],
+    tiers: [{ weeks: 2.5, count: 5, doseMg: 100 }],
     ...overrides,
   };
 }
 
-// Coerce arbitrary tier input into { weeks, doseMg }. Handles the legacy shape
-// where a tier stored a dose `count` instead of weeks.
+// Coerce arbitrary tier input into { weeks, count, doseMg }. Older saves may
+// only have weeks or only have count; initialize the missing side from cadence.
 function normalizeTiers(tiers, plan) {
   const list = (Array.isArray(tiers) ? tiers : [])
     .map((tier) => {
       const doseMg = Math.max(0.001, num(tier.doseMg, 1));
-      if (Number.isFinite(num(tier.weeks, NaN))) {
-        return { weeks: Math.max(0.5, num(tier.weeks)), doseMg };
-      }
-      // Legacy: a dose count -> weeks at this plan's cadence.
-      const count = Math.max(1, Math.round(num(tier.count, 1)));
-      return { weeks: Math.max(0.5, count / dosesPerWeek(plan)), doseMg };
+      const hasWeeks = Number.isFinite(num(tier.weeks, NaN));
+      const hasCount = Number.isFinite(num(tier.count, NaN));
+      const count = hasCount
+        ? Math.max(1, Math.round(num(tier.count, 1)))
+        : Math.max(1, Math.round(num(tier.weeks, 1) * dosesPerWeek(plan)));
+      const weeks = hasWeeks
+        ? Math.max(0.5, num(tier.weeks))
+        : Math.max(0.5, count / dosesPerWeek(plan));
+      return { weeks, count, doseMg };
     });
-  return list.length ? list : [{ weeks: 2.5, doseMg: 100 }];
+  return list.length ? list : [{ weeks: 2.5, count: 5, doseMg: 100 }];
 }
 
 export function createStore() {
@@ -97,7 +100,7 @@ export function hydrate(store, payload) {
   }
 
   // v1: a single plan stored under `fields` + top-level `tiers`/`scheduleMode`.
-  if (payload.version !== 2 && payload.version !== 3 && payload.fields) {
+  if (![2, 3, 4].includes(payload.version) && payload.fields) {
     const f = payload.fields;
     store.prefs = {
       previewCount: num(f.previewCount, DEFAULT_PREFS.previewCount),
@@ -121,8 +124,8 @@ export function hydrate(store, payload) {
     return true;
   }
 
-  // v2/v3: array of plans + shared prefs. (v2 tiers used `count`; normalizeTiers
-  // upgrades them to weeks.)
+  // v2/v3/v4: array of plans + shared prefs. normalizeTiers fills whichever
+  // side of the hybrid tier duration is missing.
   if (!Array.isArray(payload.plans) || payload.plans.length === 0) {
     return false;
   }

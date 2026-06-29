@@ -640,6 +640,39 @@ select:focus {
   font-size: 11px;
 }
 
+.phase-summary {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: 11px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-raised);
+}
+
+.phase-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.phase-summary-row span {
+  color: var(--color-text-subtle);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.phase-summary-row strong {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
 .tier-index {
   display: grid;
   place-items: center;
@@ -722,7 +755,7 @@ select:focus {
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-border);
   color: var(--color-text) !important;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 13px;
 }
 
@@ -733,8 +766,9 @@ select:focus {
 .dose-badge {
   display: grid;
   place-items: center;
-  width: 116px;
+  width: 126px;
   aspect-ratio: 1;
+  padding: var(--space-3);
   border: 1px solid var(--color-accent-border);
   border-radius: var(--radius-md);
   background: var(--color-panel);
@@ -835,9 +869,8 @@ select:focus {
 }
 
 .shot-date {
-  font-family: var(--font-mono);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .shot-meta {
@@ -846,8 +879,7 @@ select:focus {
   gap: var(--space-2);
   margin-top: 3px;
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
 }
 
 .shot-tag {
@@ -860,7 +892,6 @@ select:focus {
   color: var(--color-text);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 .plan-summary {
@@ -879,8 +910,7 @@ select:focus {
 .plan-summary-meta {
   margin-top: 4px;
   color: var(--color-text-subtle);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .plan-summary-stat {
@@ -897,8 +927,7 @@ select:focus {
 
 .plan-summary-stat small {
   color: var(--color-text-subtle);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 #scheduleTabList .shot {
@@ -924,7 +953,7 @@ select:focus {
 }
 
 #schedulePanel .dose-badge {
-  width: 88px;
+  width: 96px;
 }
 
 #schedulePanel .dose-badge span {

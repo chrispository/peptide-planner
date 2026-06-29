@@ -7,7 +7,7 @@ import { addDays, parseStartDate } from "./format.js";
 // A plan's cadence, expressed two ways:
 //   intervalDays  – days between consecutive shots
 //   dosesPerWeek  – how many shots fit in one calendar week
-// Phases are entered in weeks, so dosesPerWeek converts weeks -> dose count.
+// Weekly phases use weeks; interval phases use explicit shot counts.
 export function intervalDays(plan) {
   if (plan.scheduleMode === "interval") {
     return Math.max(1, plan.everyDays);
@@ -31,6 +31,9 @@ export function scheduleLabel(plan) {
 
 // Number of individual doses a phase contains at the plan's current cadence.
 export function tierDoseCount(tier, plan) {
+  if (plan.scheduleMode === "interval") {
+    return Math.max(1, Math.round(tier.count || 1));
+  }
   return Math.max(1, Math.round((tier.weeks || 0) * dosesPerWeek(plan)));
 }
 

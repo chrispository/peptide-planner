@@ -6,10 +6,13 @@ import {
   formatNumber,
   formatRange,
   formatDate,
+  parseStartDate,
+  addDays,
   startOfToday,
   daysBetween,
 } from "./format.js";
 import {
+  intervalDays,
   dosesPerWeek,
   scheduleLabel,
   tierDoseCount,
@@ -43,6 +46,10 @@ const el = {
   vialChips: $("vialChips"),
   aiLookupBtn: $("aiLookupBtn"),
   tierList: $("tierList"),
+  phaseLastShot: $("phaseLastShot"),
+  phaseVials: $("phaseVials"),
+  phaseLeftoverRow: $("phaseLeftoverRow"),
+  phaseLeftover: $("phaseLeftover"),
   // recon outputs
   recommendedMl: $("recommendedMl"),
   recommendedSummary: $("recommendedSummary"),
@@ -114,6 +121,12 @@ export function writePrefs(prefs) {
 // load) — captions update in place during typing via renderOutputs.
 export function renderTiers(plan) {
   el.tierList.innerHTML = "";
+  const durationLabel = plan.scheduleMode === "interval" ? "Shots" : "Weeks";
+  const durationValue = (tier) => (plan.scheduleMode === "interval" ? tier.count : tier.weeks);
+  const durationAttrs =
+    plan.scheduleMode === "interval"
+      ? 'type="number" min="1" step="1"'
+      : 'type="number" min="0.5" step="0.5"';
   plan.tiers.forEach((tier, index) => {
     const row = document.createElement("div");
     row.className = "tier-row";
@@ -122,8 +135,8 @@ export function renderTiers(plan) {
       <div class="tier-main">
         <div class="tier-index">${index + 1}</div>
         <label class="field">
-          <span>Weeks</span>
-          <input class="tier-weeks" type="number" min="0.5" step="0.5" value="${tier.weeks}" />
+          <span>${durationLabel}</span>
+          <input class="tier-duration" ${durationAttrs} value="${durationValue(tier)}" />
         </label>
         <label class="field">
           <span>mg per dose</span>
@@ -142,21 +155,35 @@ export function renderTiers(plan) {
 // rebuilding the inputs.
 function updateTierCaptions(plan) {
   const dpw = dosesPerWeek(plan);
+  const interval = intervalDays(plan);
+  const startDate = parseStartDate(plan.startDate);
   let doseCursor = 0;
+  let lastShotDate = null;
   el.tierList.querySelectorAll(".tier-row").forEach((row, index) => {
     const tier = plan.tiers[index];
     if (!tier) {
       return;
     }
     const count = tierDoseCount(tier, plan);
-    const startWeek = Math.ceil((doseCursor + 1) / dpw);
-    const endWeek = Math.ceil((doseCursor + count) / dpw);
+    const startDose = doseCursor + 1;
+    const endDose = doseCursor + count;
     doseCursor += count;
-    const rangeLabel = startWeek === endWeek ? `Week ${startWeek}` : `Weeks ${startWeek}–${endWeek}`;
+    lastShotDate = addDays(startDate, Math.round((endDose - 1) * interval));
+    const startWeek = Math.ceil(startDose / dpw);
+    const endWeek = Math.ceil(endDose / dpw);
+    const rangeLabel =
+      plan.scheduleMode === "interval"
+        ? startDose === endDose
+          ? `Shot ${startDose}`
+          : `Shots ${startDose}–${endDose}`
+        : startWeek === endWeek
+          ? `Week ${startWeek}`
+          : `Weeks ${startWeek}–${endWeek}`;
     const doseLabel = `${count} ${count === 1 ? "dose" : "doses"}`;
     row.querySelector(".tier-caption").textContent =
       `${rangeLabel} · ${doseLabel} · ${mg(count * tier.doseMg)} mg total`;
   });
+  el.phaseLastShot.textContent = lastShotDate ? formatDate(lastShotDate) : "-";
 }
 
 // ---- Peptide meta ---------------------------------------------------------
@@ -215,6 +242,10 @@ function renderReconEmpty(message) {
   el.totalShots.textContent = "0";
   el.concentration.textContent = "-";
   el.bacUseBy.textContent = "-";
+  el.phaseLastShot.textContent = "-";
+  el.phaseVials.textContent = "-";
+  el.phaseLeftover.textContent = "-";
+  el.phaseLeftoverRow.classList.add("hidden");
   el.scheduleList.innerHTML = "";
   el.scheduleSummary.textContent = "No schedule to preview yet.";
 }
@@ -258,12 +289,6 @@ function renderRecon(store, plan) {
   const planWeeks = result.planDurationDays / 7;
   const vialEndsBeforeBac = result.vialDurationDays <= prefs.bacWindowDays;
   const vialsLabel = result.vialsNeeded === 1 ? "1 vial" : `${result.vialsNeeded} vials`;
-  const vialsNote =
-    result.vialsNeeded > 1
-      ? ` Reconstitute each of the ${result.vialsNeeded} vials the same way.`
-      : result.lastVialLeftover > 0.001
-        ? ` ${mg(result.lastVialLeftover)} mg left unused in the vial.`
-        : "";
 
   const dpw = dosesPerWeek(plan);
   const distinctDoses = [...new Set(result.doses.map((d) => d.doseMg))].sort((a, b) => a - b);
@@ -273,13 +298,16 @@ function renderRecon(store, plan) {
   el.recommendedMl.textContent = `${formatNumber(r.ml, 1)} mL`;
   el.recommendedUnits.textContent = formatRange(r.unitsByDose);
   el.recommendedSummary.textContent =
-    `Add ${formatNumber(r.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"} for ${summarizeDoses(result.doses, mg)}.${vialsNote}`;
+    `Add ${formatNumber(r.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"} for ${summarizeDoses(result.doses, mg)}.`;
   el.recommendedPerWeek.textContent =
     `≈ ${formatRange(mgPerWeek, 3)} mg / week · ${formatRange(unitsPerWeek, 0)} units / week (${formatNumber(dpw, 1)}x weekly)`;
   el.vialLasts.textContent = `${formatNumber(result.vialDurationDays, 0)} days`;
   el.totalShots.textContent = formatNumber(result.doses.length, 0);
   el.concentration.textContent = `${formatNumber(r.concentration, 1)} mg/mL`;
   el.bacUseBy.textContent = formatDate(result.bacUseBy);
+  el.phaseVials.textContent = vialsLabel;
+  el.phaseLeftover.textContent = `${mg(result.lastVialLeftover)} mg`;
+  el.phaseLeftoverRow.classList.toggle("hidden", result.lastVialLeftover <= 0.001);
   el.scheduleSummary.textContent =
     `${scheduleLabel(plan)}; ${result.doses.length} shots over ~${formatNumber(planWeeks, 0)} weeks. Needs ${vialsLabel} (${mg(result.totalMg)} mg total); each vial ${vialEndsBeforeBac ? "finishes inside" : "runs past"} the ${prefs.bacWindowDays}-day BAC window.`;
 

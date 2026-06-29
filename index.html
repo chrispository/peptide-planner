@@ -114,22 +114,6 @@
             </button>
             <div class="vial-chips" id="vialChips"></div>
 
-            <div class="section-heading compact row">
-              <div>
-                <h2>Dose phases</h2>
-                <p>Set each phase in weeks; doses follow your cadence. Phases run in order until the vial runs out.</p>
-              </div>
-              <button class="button button--secondary small-button" id="addTier" type="button">
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M5 12h14" />
-                  <path d="M12 5v14" />
-                </svg>
-                Add phase
-              </button>
-            </div>
-
-            <div class="tier-list" id="tierList"></div>
-
             <div class="section-heading compact">
               <h2>Schedule</h2>
             </div>
@@ -152,10 +136,36 @@
                 <span>Every N days</span>
                 <input id="everyDays" type="number" min="1" step="1" value="3" />
               </label>
-              <label class="field">
-                <span>Preview shots</span>
-                <input id="previewCount" type="number" min="3" max="24" step="1" value="8" />
-              </label>
+            </div>
+
+            <div class="section-heading compact row">
+              <div>
+                <h2>Dose phases</h2>
+                <p>Use weeks for weekly schedules, or shot counts for every-N-days schedules.</p>
+              </div>
+              <button class="button button--secondary small-button" id="addTier" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14" />
+                  <path d="M12 5v14" />
+                </svg>
+                Add phase
+              </button>
+            </div>
+
+            <div class="tier-list" id="tierList"></div>
+            <div class="phase-summary">
+              <div class="phase-summary-row">
+                <span>Last shot</span>
+                <strong id="phaseLastShot">-</strong>
+              </div>
+              <div class="phase-summary-row">
+                <span>Vials</span>
+                <strong id="phaseVials">-</strong>
+              </div>
+              <div class="phase-summary-row hidden" id="phaseLeftoverRow">
+                <span>Left unused</span>
+                <strong id="phaseLeftover">-</strong>
+              </div>
             </div>
 
             <div class="section-heading compact">
@@ -164,6 +174,10 @@
             </div>
 
             <div class="grid-2">
+              <label class="field">
+                <span>Preview shots</span>
+                <input id="previewCount" type="number" min="3" max="24" step="1" value="8" />
+              </label>
               <label class="field">
                 <span>Max preferred units</span>
                 <input id="maxUnits" type="number" min="10" max="100" step="1" value="70" />

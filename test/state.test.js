@@ -11,7 +11,7 @@ test("createStore yields one default plan and sane prefs", () => {
   assert.equal(store.version, STATE_VERSION);
 });
 
-test("hydrate migrates legacy v1 (fields + count tiers) to weeks", () => {
+test("hydrate migrates legacy v1 (fields + count tiers) to hybrid tiers", () => {
   const store = createStore();
   const ok = hydrate(store, {
     scheduleMode: "interval",
@@ -24,10 +24,10 @@ test("hydrate migrates legacy v1 (fields + count tiers) to weeks", () => {
   assert.equal(p.peptideName, "BPC-157");
   assert.equal(p.scheduleMode, "interval");
   // every 1 day => 7 doses/week, 14 doses => 2 weeks.
-  assert.deepEqual(p.tiers, [{ weeks: 2, doseMg: 0.25 }]);
+  assert.deepEqual(p.tiers, [{ weeks: 2, count: 14, doseMg: 0.25 }]);
 });
 
-test("hydrate migrates v2 count-based tiers to weeks and keeps prefs/tab", () => {
+test("hydrate migrates v2 count-based tiers to hybrid tiers and keeps prefs/tab", () => {
   const store = createStore();
   const ok = hydrate(store, {
     version: 2,
@@ -51,12 +51,15 @@ test("hydrate migrates v2 count-based tiers to weeks and keeps prefs/tab", () =>
   assert.equal(store.activeTab, "schedule");
   assert.equal(store.prefs.idealUnits, 50);
   assert.equal(store.prefs.bacWindowDays, 28);
-  assert.deepEqual(store.plans[0].tiers, [{ weeks: 4, doseMg: 2.5 }, { weeks: 4, doseMg: 5 }]);
+  assert.deepEqual(store.plans[0].tiers, [
+    { weeks: 4, count: 4, doseMg: 2.5 },
+    { weeks: 4, count: 4, doseMg: 5 },
+  ]);
 });
 
-test("hydrate v3 round-trips through serialize unchanged", () => {
+test("hydrate v4 round-trips through serialize unchanged", () => {
   const store = createStore();
-  store.plans = [createPlan({ peptideName: "Semaglutide", vialMg: 5, tiers: [{ weeks: 4, doseMg: 0.25 }] })];
+  store.plans = [createPlan({ peptideName: "Semaglutide", vialMg: 5, tiers: [{ weeks: 4, count: 4, doseMg: 0.25 }] })];
   store.activePlanId = store.plans[0].id;
   store.prefs.idealUnits = 55;
 
@@ -67,20 +70,20 @@ test("hydrate v3 round-trips through serialize unchanged", () => {
   const restored = createStore();
   assert.equal(hydrate(restored, payload), true);
   assert.equal(restored.plans[0].peptideName, "Semaglutide");
-  assert.deepEqual(restored.plans[0].tiers, [{ weeks: 4, doseMg: 0.25 }]);
+  assert.deepEqual(restored.plans[0].tiers, [{ weeks: 4, count: 4, doseMg: 0.25 }]);
   assert.equal(restored.prefs.idealUnits, 55);
 });
 
 test("hydrate rejects empty or malformed payloads", () => {
   assert.equal(hydrate(createStore(), null), false);
   assert.equal(hydrate(createStore(), {}), false);
-  assert.equal(hydrate(createStore(), { version: 3, plans: [] }), false);
+  assert.equal(hydrate(createStore(), { version: 4, plans: [] }), false);
 });
 
 test("hydrate falls back to first plan when activePlanId is unknown", () => {
   const store = createStore();
   hydrate(store, {
-    version: 3,
+    version: 4,
     activePlanId: "missing",
     prefs: {},
     plans: [createPlan({ id: "real", peptideName: "NAD+" })],
@@ -91,6 +94,6 @@ test("hydrate falls back to first plan when activePlanId is unknown", () => {
 
 test("normalized tiers never end up empty", () => {
   const store = createStore();
-  hydrate(store, { version: 3, prefs: {}, activePlanId: "x", plans: [createPlan({ id: "x", tiers: [] })] });
+  hydrate(store, { version: 4, prefs: {}, activePlanId: "x", plans: [createPlan({ id: "x", tiers: [] })] });
   assert.ok(store.plans[0].tiers.length >= 1);
 });

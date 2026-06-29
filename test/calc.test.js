@@ -23,7 +23,7 @@ function plan(overrides = {}) {
     scheduleMode: "weekly",
     shotsPerWeek: 2,
     everyDays: 3,
-    tiers: [{ weeks: 2.5, doseMg: 100 }],
+    tiers: [{ weeks: 2.5, count: 5, doseMg: 100 }],
     ...overrides,
   };
 }
@@ -35,9 +35,10 @@ test("cadence helpers convert between weekly and interval", () => {
   assert.equal(intervalDays(plan({ scheduleMode: "interval", everyDays: 3 })), 3);
 });
 
-test("tierDoseCount rounds weeks * cadence and never goes below 1", () => {
+test("tierDoseCount uses weeks for weekly mode and count for interval mode", () => {
   assert.equal(tierDoseCount({ weeks: 2.5, doseMg: 100 }, plan({ shotsPerWeek: 2 })), 5);
   assert.equal(tierDoseCount({ weeks: 0.1, doseMg: 100 }, plan({ shotsPerWeek: 1 })), 1);
+  assert.equal(tierDoseCount({ weeks: 10, count: 3, doseMg: 100 }, plan({ scheduleMode: "interval" })), 3);
 });
 
 test("buildDosePlan flattens phases and counts vials", () => {
@@ -49,7 +50,7 @@ test("buildDosePlan flattens phases and counts vials", () => {
 
 test("buildDosePlan splits across multiple vials when the plan exceeds one", () => {
   const { vialsNeeded, totalMg, lastVialLeftover } = buildDosePlan(
-    plan({ vialMg: 30, tiers: [{ weeks: 8, doseMg: 5 }], scheduleMode: "weekly", shotsPerWeek: 1 }),
+    plan({ vialMg: 30, tiers: [{ weeks: 8, count: 8, doseMg: 5 }], scheduleMode: "weekly", shotsPerWeek: 1 }),
   );
   // 8 doses * 5 mg = 40 mg over two 30 mg vials.
   assert.equal(totalMg, 40);
@@ -87,7 +88,7 @@ test("computePlan returns empty when there are no phases", () => {
 
 test("computeAll drops uncomputable plans and mergeSchedule sorts by date", () => {
   const a = plan({ id: "a", peptideName: "NAD+", startDate: "2026-01-10" });
-  const b = plan({ id: "b", peptideName: "TB-500", vialMg: 10, startDate: "2026-01-01", tiers: [{ weeks: 2, doseMg: 2 }] });
+  const b = plan({ id: "b", peptideName: "TB-500", vialMg: 10, startDate: "2026-01-01", tiers: [{ weeks: 2, count: 4, doseMg: 2 }] });
   const computed = computeAll([a, b], PREFS);
   assert.equal(computed.length, 2);
   const merged = mergeSchedule(computed);

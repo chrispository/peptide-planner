@@ -63,9 +63,21 @@ function syncTiersFromDom() {
     return;
   }
   plan.tiers = Array.from(document.querySelectorAll("#tierList .tier-row")).map((row) => ({
-    weeks: Math.max(0.5, num(row.querySelector(".tier-weeks").value, 1)),
+    weeks: plan.tiers[Number(row.dataset.index)]?.weeks ?? 1,
+    count: plan.tiers[Number(row.dataset.index)]?.count ?? 1,
     doseMg: Math.max(0.001, num(row.querySelector(".tier-dose").value, 1)),
   }));
+  plan.tiers.forEach((tier, index) => {
+    const input = document.querySelector(`#tierList .tier-row[data-index="${index}"] .tier-duration`);
+    if (!input) {
+      return;
+    }
+    if (plan.scheduleMode === "interval") {
+      tier.count = Math.max(1, Math.round(num(input.value, tier.count)));
+    } else {
+      tier.weeks = Math.max(0.5, num(input.value, tier.weeks));
+    }
+  });
 }
 
 // When a name matches a known peptide, adopt its cadence (only when the name
@@ -90,10 +102,11 @@ const form = document.getElementById("plannerForm");
 
 form.addEventListener("input", (event) => {
   const target = event.target;
-  const isTier = target.classList.contains("tier-weeks") || target.classList.contains("tier-dose");
+  const isTier = target.classList.contains("tier-duration") || target.classList.contains("tier-dose");
   const isPeptide = target.id === "peptideName";
   const plan = getActivePlan(store);
   const previousName = plan ? plan.peptideName : "";
+  const previousMode = plan ? plan.scheduleMode : "";
 
   readActivePlan();
   readPrefs();
@@ -103,6 +116,9 @@ form.addEventListener("input", (event) => {
   if (isPeptide && plan) {
     maybeApplyPeptideDefaults(plan, previousName);
     writeScheduleControls(plan); // reflects adopted cadence without touching the name field
+    if (plan.scheduleMode !== previousMode) {
+      renderTiers(plan);
+    }
   }
 
   renderOutputs(store);
@@ -127,7 +143,7 @@ document.getElementById("addTier").addEventListener("click", () => {
     return;
   }
   const last = plan.tiers[plan.tiers.length - 1] || { doseMg: 100 };
-  plan.tiers.push({ weeks: 1, doseMg: last.doseMg });
+  plan.tiers.push({ weeks: 1, count: 1, doseMg: last.doseMg });
   renderTiers(plan);
   renderOutputs(store);
   persistence.scheduleSave();
@@ -206,7 +222,7 @@ document.getElementById("addPlan").addEventListener("click", () => {
     peptideName: "Tirzepatide",
     vialMg: 30,
     shotsPerWeek: 1,
-    tiers: [{ weeks: 12, doseMg: 2.5 }],
+    tiers: [{ weeks: 12, count: 12, doseMg: 2.5 }],
   });
   maybeApplyPeptideDefaults(plan, "");
   store.plans.push(plan);
@@ -223,6 +239,7 @@ document.querySelectorAll(".segmented-button").forEach((button) => {
     }
     plan.scheduleMode = button.dataset.mode;
     writeScheduleControls(plan);
+    renderTiers(plan);
     renderOutputs(store);
     persistence.scheduleSave();
   });
