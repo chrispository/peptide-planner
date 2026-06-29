@@ -2,8 +2,9 @@
 // render layer to repaint. Keeps mutation logic here and rendering in render.js.
 
 import { dateInputValue } from "./format.js";
-import { dosesPerWeek } from "./calc.js";
+import { dosesPerWeek, computeAll, mergeSchedule } from "./calc.js";
 import { lookupPeptide } from "./peptides.js";
+import { downloadFile, buildIcs } from "./exporters.js";
 import {
   createStore,
   createPlan,
@@ -230,6 +231,53 @@ document.querySelectorAll(".app-tab").forEach((tab) => {
 
 document.getElementById("themeToggle").addEventListener("click", () => {
   setTheme(root.classList.contains("dark") ? "light" : "dark");
+});
+
+// ---- Backup, calendar, print ----------------------------------------------
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const stamp = dateInputValue(new Date());
+  downloadFile(`peptide-planner-${stamp}.json`, JSON.stringify(serialize(store), null, 2), "application/json");
+});
+
+document.getElementById("importBtn").addEventListener("click", () => {
+  document.getElementById("importFile").click();
+});
+
+document.getElementById("importFile").addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = ""; // allow re-importing the same file later
+  if (!file) {
+    return;
+  }
+  try {
+    const payload = JSON.parse(await file.text());
+    if (!hydrate(store, payload)) {
+      throw new Error("not a recognized backup");
+    }
+    writePrefs(store.prefs);
+    setActiveTab(store.activeTab);
+    renderAll(store);
+    persistence.scheduleSave();
+    setSaveStatus("Imported");
+  } catch (error) {
+    setSaveStatus("Import failed");
+    window.alert(`Could not import this file: ${error.message}`);
+  }
+});
+
+document.getElementById("icsBtn").addEventListener("click", () => {
+  const merged = mergeSchedule(computeAll(store.plans, store.prefs));
+  if (merged.length === 0) {
+    window.alert("No scheduled injections to export yet.");
+    return;
+  }
+  downloadFile(`peptide-schedule-${dateInputValue(new Date())}.ics`, buildIcs(merged), "text/calendar");
+});
+
+document.getElementById("printBtn").addEventListener("click", () => {
+  setActiveTab("reconstitution"); // the print stylesheet targets this panel
+  window.print();
 });
 
 // ---- Tabs + theme ---------------------------------------------------------

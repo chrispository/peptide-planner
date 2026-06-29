@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Peptide Dose Planner</title>
+    <meta name="theme-color" content="#0c0c0d" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -24,6 +28,9 @@
         </div>
         <div class="top-actions">
           <span class="save-status" id="saveStatus">Not saved</span>
+          <button class="theme-toggle" id="exportBtn" type="button">Export</button>
+          <button class="theme-toggle" id="importBtn" type="button">Import</button>
+          <input id="importFile" type="file" accept="application/json,.json" hidden />
           <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color mode">
             <span class="theme-icon" aria-hidden="true">◐</span>
             <span id="themeLabel">Dark</span>
@@ -46,6 +53,7 @@
         <div class="plan-bar">
           <div class="plan-chips" id="planChips"></div>
           <button class="small-button add-plan" id="addPlan" type="button">+ Add peptide</button>
+          <button class="small-button plan-bar-print" id="printBtn" type="button">Print card</button>
         </div>
 
         <div class="layout">
@@ -249,6 +257,7 @@
                 <h2>Full schedule</h2>
                 <p id="scheduleTabMeta">All planned injections, merged in date order.</p>
               </div>
+              <button class="small-button" id="icsBtn" type="button">Add to calendar</button>
             </div>
             <div class="schedule-list" id="scheduleTabList"></div>
           </article>

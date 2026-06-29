@@ -942,6 +942,72 @@ select:focus {
   letter-spacing: -0.01em;
 }
 
+/* ---- Plan-bar print button (push to the right) ---- */
+
+.plan-bar-print {
+  margin-left: auto;
+}
+
+/* ---- Scheduling tab: more compact hero header ---- */
+
+#schedulePanel .hero-result {
+  padding: 18px 20px;
+}
+
+#schedulePanel .hero-result h2 {
+  font-size: clamp(22px, 3.4vw, 30px);
+  margin-bottom: 5px;
+}
+
+#schedulePanel .dose-badge {
+  width: 88px;
+}
+
+#schedulePanel .dose-badge span {
+  font-size: 26px;
+}
+
+/* ---- Print: clean single-vial reconstitution card ---- */
+
+@media print {
+  body {
+    padding: 0;
+    background: #fff;
+    background-image: none;
+    color: #000;
+    font-size: 12px;
+  }
+
+  .topbar,
+  .notice,
+  .app-tabs,
+  .plan-bar,
+  .controls,
+  #schedulePanel {
+    display: none !important;
+  }
+
+  .app-shell {
+    width: 100%;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .panel,
+  .hero-result,
+  .stat-grid {
+    border-color: #bbb;
+    break-inside: avoid;
+  }
+
+  .results {
+    gap: 12px;
+  }
+}
+
 /* ---- Responsive ---- */
 
 @media (max-width: 960px) {

@@ -1,10 +1,11 @@
-const { createServer } = require("node:http");
-const { readFile, mkdir } = require("node:fs/promises");
-const { existsSync } = require("node:fs");
-const path = require("node:path");
-const { DatabaseSync } = require("node:sqlite");
+import { createServer } from "node:http";
+import { readFile, mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { DatabaseSync } from "node:sqlite";
 
-const rootDir = __dirname;
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 // SHOTS_DATA_DIR lets testing/dev point at a throwaway location so the real
 // saved planner in ./data is never touched. Defaults to ./data.
 const dataDir = process.env.SHOTS_DATA_DIR
@@ -30,6 +31,7 @@ const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -94,7 +96,7 @@ function sanitizePlannerPayload(payload) {
     throw new Error("Planner payload must be an object.");
   }
 
-  // v2 stores an array of plans; v1 stored a single plan under `fields`.
+  // v2+ stores an array of plans; v1 stored a single plan under `fields`.
   const firstPlan = Array.isArray(payload.plans) ? payload.plans[0] : null;
   const source = firstPlan || payload.fields || {};
 
