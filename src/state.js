@@ -40,7 +40,8 @@ export function createPlan(overrides = {}) {
     scheduleMode: "weekly",
     shotsPerWeek: 2,
     everyDays: 3,
-    flexibleDose: true,
+    flexibleDose: false,
+    flexibleDosePct: 10,
     tiers: [{ weeks: 2.5, count: 5, doseMg: 100 }],
     ...overrides,
   };

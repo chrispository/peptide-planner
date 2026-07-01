@@ -6,6 +6,7 @@ import {
   formatNumber,
   formatRange,
   formatDate,
+  dateInputValue,
   parseStartDate,
   addDays,
   startOfToday,
@@ -42,6 +43,7 @@ const el = {
   shotsPerWeek: $("shotsPerWeek"),
   everyDays: $("everyDays"),
   flexibleDose: $("flexibleDose"),
+  flexibleDosePct: $("flexibleDosePct"),
   peptideNote: $("peptideNote"),
   aiLookupBtn: $("aiLookupBtn"),
   tierList: $("tierList"),
@@ -89,6 +91,8 @@ export function writeFormValues(plan) {
   el.shotsPerWeek.value = plan.shotsPerWeek;
   el.everyDays.value = plan.everyDays;
   el.flexibleDose.checked = Boolean(plan.flexibleDose);
+  el.flexibleDosePct.value = plan.flexibleDosePct ?? 10;
+  el.flexibleDosePct.disabled = !plan.flexibleDose;
 }
 
 // Schedule mode + cadence only — safe to call while the peptide-name field is
@@ -240,50 +244,99 @@ function renderReconEmpty(message) {
 
 function renderShotList(target, shots, { showTag } = {}) {
   target.innerHTML = "";
+  const days = new Map();
+  const addDayItem = (date, item) => {
+    const key = dateInputValue(date);
+    if (!days.has(key)) {
+      days.set(key, { date, items: [] });
+    }
+    days.get(key).items.push(item);
+  };
+  if (showTag && shots.length > 0) {
+    const firstShot = [...shots].sort((a, b) => a.date - b.date)[0];
+    addDayItem(firstShot.date, {
+      type: "event",
+      tone: "bac",
+      label: "BAC water opened",
+    });
+    addDayItem(firstShot.bacExpires, {
+      type: "event",
+      tone: "bac",
+      label: "BAC water expiring",
+    });
+  }
+
   shots.forEach((shot) => {
-    if (shot.bacOpened) {
-      const marker = document.createElement("div");
-      marker.className = "vial-marker bac";
-      marker.innerHTML = `
-        <span>BAC water opened</span>
-        <strong>Expires ${formatDate(shot.bacExpires)}</strong>
-      `;
-      target.appendChild(marker);
+    if (!showTag && shot.bacOpened) {
+      addDayItem(shot.date, {
+        type: "event",
+        tone: "bac",
+        label: "BAC water opened",
+      });
+      addDayItem(shot.bacExpires, {
+        type: "event",
+        tone: "bac",
+        label: "BAC water expiring",
+      });
     }
     if (shot.opensVial) {
-      const marker = document.createElement("div");
-      marker.className = "vial-marker";
       const peptide = shot.peptideName ? `${shot.peptideName} ` : "";
-      marker.innerHTML = `
-        <span>Open ${peptide}vial ${shot.vialNumber}</span>
-      `;
-      target.appendChild(marker);
+      addDayItem(shot.date, {
+        type: "event",
+        tone: "open",
+        label: `Open ${peptide}vial ${shot.vialNumber}`,
+      });
     }
     const meta = showTag
       ? `<span class="shot-tag">${shot.peptideName}</span>${mg(shot.doseMg)} mg`
       : `${mg(shot.doseMg)} mg · phase ${shot.tierIndex + 1}`;
-    const row = document.createElement("div");
-    row.className = "shot";
-    row.innerHTML = `
-      <div class="shot-number">${shot.index + 1}</div>
-      <div>
-        <div class="shot-date">${formatDate(shot.date)}</div>
-        <div class="shot-meta">${meta}</div>
-      </div>
-      <span class="pill">${shot.units != null ? `${formatNumber(shot.units, 1)} units` : "-"}</span>
-    `;
-    target.appendChild(row);
+    addDayItem(shot.date, {
+      type: "shot",
+      index: shot.index,
+      meta,
+      units: shot.units,
+    });
     if (shot.endsVial) {
-      const marker = document.createElement("div");
-      marker.className = "vial-marker end";
       const peptide = shot.peptideName ? `${shot.peptideName} ` : "";
-      marker.innerHTML = `
-        <span>End ${peptide}vial ${shot.endsVial.vialNumber}</span>
-        <strong>${mg(shot.endsVial.unusedMg)} mg unused</strong>
-      `;
-      target.appendChild(marker);
+      addDayItem(shot.date, {
+        type: "event",
+        tone: "end",
+        label: `End ${peptide}vial ${shot.endsVial.vialNumber}`,
+        value: `${mg(shot.endsVial.unusedMg)} mg unused`,
+      });
     }
   });
+
+  [...days.values()]
+    .sort((a, b) => a.date - b.date)
+    .forEach((day) => {
+      const row = document.createElement("div");
+      row.className = "schedule-day";
+      const items = day.items
+        .map((item) => {
+          if (item.type === "shot") {
+            return `
+              <div class="schedule-shot">
+                <span class="shot-number">${item.index + 1}</span>
+                <div class="shot-meta">${item.meta}</div>
+                <span class="pill">${item.units != null ? `${formatNumber(item.units, 1)} units` : "-"}</span>
+              </div>
+            `;
+          }
+          return `
+            <div class="schedule-event ${item.tone}">
+              <span>${item.label}</span>
+              ${item.value ? `<strong>${item.value}</strong>` : ""}
+            </div>
+          `;
+        })
+        .join("");
+      row.innerHTML = `
+        <div class="shot-date">${formatDate(day.date)}</div>
+        <div class="schedule-day-items">${items}</div>
+      `;
+      target.appendChild(row);
+    });
 }
 
 function renderRecon(store, plan) {
@@ -326,13 +379,17 @@ function renderRecon(store, plan) {
   el.phaseLeftoverRow.classList.toggle("hidden", result.lastVialLeftover <= 0.001);
   if (plan.flexibleDose && result.cleanupSuggestions.length > 0) {
     const suggestion = result.cleanupSuggestions[0];
-    const more = result.cleanupSuggestions.length > 1 ? ` ${result.cleanupSuggestions.length - 1} more vial cleanup suggestion${result.cleanupSuggestions.length === 2 ? "" : "s"} available.` : "";
+    const more = result.cleanupSuggestions.length > 1 ? ` ${result.cleanupSuggestions.length - 1} more vial cleanup adjustment${result.cleanupSuggestions.length === 2 ? "" : "s"} applied.` : "";
+    const shotRange =
+      suggestion.shotStartIndex === suggestion.shotEndIndex
+        ? `shot ${suggestion.shotStartIndex + 1}`
+        : `shots ${suggestion.shotStartIndex + 1}-${suggestion.shotEndIndex + 1}`;
     el.phaseSuggestion.textContent =
-      `Clean vial ${suggestion.vialNumber}: make shot ${suggestion.shotIndex + 1} ${mg(suggestion.suggestedDoseMg)} mg (+${mg(suggestion.addedMg)} mg).${more}`;
+      `Cleaned vial ${suggestion.vialNumber}: increased ${shotRange} by ${formatNumber(suggestion.adjustmentPct, 1)}% (+${mg(suggestion.addedMg)} mg total).${more}`;
     el.phaseSuggestion.classList.remove("hidden");
   } else {
     el.phaseSuggestion.textContent = plan.flexibleDose
-      ? "No small cleanup adjustment found for the current vial breaks."
+      ? `No cleanup adjustment found within ${formatNumber(plan.flexibleDosePct ?? 10, 0)}%.`
       : "Flexible dose is off; vial cleanup suggestions are hidden.";
     el.phaseSuggestion.classList.remove("hidden");
   }

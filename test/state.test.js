@@ -9,6 +9,8 @@ test("createStore yields one default plan and sane prefs", () => {
   assert.equal(store.activePlanId, store.plans[0].id);
   assert.equal(store.prefs.idealUnits, 60);
   assert.equal(store.version, STATE_VERSION);
+  assert.equal(store.plans[0].flexibleDose, false);
+  assert.equal(store.plans[0].flexibleDosePct, 10);
 });
 
 test("hydrate migrates legacy v1 (fields + count tiers) to hybrid tiers", () => {

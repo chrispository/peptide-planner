@@ -46,6 +46,7 @@ function readActivePlan() {
   plan.shotsPerWeek = Math.max(0.1, num(document.getElementById("shotsPerWeek").value, plan.shotsPerWeek));
   plan.everyDays = Math.max(1, num(document.getElementById("everyDays").value, plan.everyDays));
   plan.flexibleDose = document.getElementById("flexibleDose").checked;
+  plan.flexibleDosePct = clamp(num(document.getElementById("flexibleDosePct").value, plan.flexibleDosePct ?? 10), 1, 100);
 }
 
 function readPrefs() {
@@ -94,9 +95,6 @@ function maybeApplyPeptideDefaults(plan, previousName) {
   if (info.schedule.everyDays) {
     plan.everyDays = info.schedule.everyDays;
   }
-  if (typeof info.flexibleDose === "boolean") {
-    plan.flexibleDose = info.flexibleDose;
-  }
 }
 
 // ---- Event wiring ---------------------------------------------------------
@@ -116,6 +114,7 @@ form.addEventListener("input", (event) => {
   if (isTier) {
     syncTiersFromDom();
   }
+  document.getElementById("flexibleDosePct").disabled = !plan?.flexibleDose;
   if (isPeptide && plan) {
     maybeApplyPeptideDefaults(plan, previousName);
     writeScheduleControls(plan); // reflects adopted cadence without touching the name field
@@ -214,6 +213,7 @@ document.getElementById("addPlan").addEventListener("click", () => {
     vialMg: 30,
     shotsPerWeek: 1,
     flexibleDose: false,
+    flexibleDosePct: 10,
     tiers: [{ weeks: 12, count: 12, doseMg: 2.5 }],
   });
   maybeApplyPeptideDefaults(plan, "");

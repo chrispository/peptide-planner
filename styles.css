@@ -696,6 +696,10 @@ input[type="checkbox"] {
   background: var(--color-panel);
 }
 
+.toggle-field > span:first-of-type {
+  flex: 1;
+}
+
 .toggle-field strong {
   display: block;
   font-size: 13px;
@@ -708,6 +712,17 @@ input[type="checkbox"] {
   color: var(--color-text-muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.toggle-number {
+  display: grid;
+  gap: 5px;
+  width: 104px;
+}
+
+.toggle-number input {
+  min-height: 32px;
+  text-align: right;
 }
 
 /* ---- Segmented ---- */
@@ -869,38 +884,53 @@ input[type="checkbox"] {
   border-top: 1px solid var(--color-border);
 }
 
-.shot {
+.shot,
+.schedule-day {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 13px;
+  align-items: start;
+  padding: 12px 2px;
+}
+
+.schedule-day-items {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.schedule-shot {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) auto;
   gap: 13px;
   align-items: center;
-  padding: 12px 2px;
 }
 
-.vial-marker {
+.schedule-event {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: var(--space-3);
-  padding: 8px 2px;
+  min-height: 24px;
   color: var(--color-accent-strong);
   font-family: var(--font-mono);
   font-size: 11px;
 }
 
-.vial-marker.end {
+.schedule-event.end {
   color: var(--color-text-subtle);
 }
 
-.vial-marker.bac {
+.schedule-event.bac {
   color: var(--color-warning);
 }
 
-.vial-marker span {
+.schedule-event span {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
-.vial-marker strong {
+.schedule-event strong {
   font-weight: 500;
 }
 
@@ -981,6 +1011,10 @@ input[type="checkbox"] {
 }
 
 #scheduleTabList .shot {
+  padding: 16px 2px;
+}
+
+#scheduleTabList .schedule-day {
   padding: 16px 2px;
 }
 
@@ -1151,9 +1185,18 @@ input[type="checkbox"] {
   }
 
   .shot,
+  .schedule-day,
   .plan-summary {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+
+  .schedule-shot {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .schedule-shot .pill {
+    grid-column: 2;
   }
 
   .tier-main {

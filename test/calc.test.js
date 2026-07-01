@@ -65,6 +65,7 @@ test("buildDosePlan tracks unused medication across opened vials", () => {
       flexibleDose: true,
       scheduleMode: "interval",
       everyDays: 3,
+      flexibleDosePct: 20,
       tiers: [
         { weeks: 1, count: 1, doseMg: 75 },
         { weeks: 1, count: 1, doseMg: 100 },
@@ -73,16 +74,81 @@ test("buildDosePlan tracks unused medication across opened vials", () => {
       ],
     }),
   );
-  assert.equal(result.totalMg, 2400);
+  assert.equal(result.totalMg, 2650);
   assert.equal(result.vialsNeeded, 6);
-  assert.equal(result.lastVialLeftover, 600);
+  assert.equal(result.lastVialLeftover, 350);
   assert.deepEqual(
-    result.cleanupSuggestions.slice(0, 2).map((s) => ({ vialNumber: s.vialNumber, shotIndex: s.shotIndex, addedMg: s.addedMg })),
+    result.cleanupSuggestions.slice(0, 2).map((s) => ({
+      vialNumber: s.vialNumber,
+      shotStartIndex: s.shotStartIndex,
+      shotEndIndex: s.shotEndIndex,
+      addedMg: s.addedMg,
+      adjustmentPct: Math.round(s.adjustmentPct * 10) / 10,
+      applied: s.applied,
+    })),
     [
-      { vialNumber: 1, shotIndex: 3, addedMg: 50 },
-      { vialNumber: 2, shotIndex: 6, addedMg: 50 },
+      { vialNumber: 1, shotStartIndex: 0, shotEndIndex: 3, addedMg: 50, adjustmentPct: 11.1, applied: true },
+      { vialNumber: 2, shotStartIndex: 4, shotEndIndex: 6, addedMg: 50, adjustmentPct: 11.1, applied: true },
     ],
   );
+});
+
+test("flexible dosing applies cleanup to the computed doses and vial remainder", () => {
+  const result = buildDosePlan(
+    plan({
+      vialMg: 500,
+      flexibleDose: true,
+      flexibleDosePct: 12,
+      scheduleMode: "interval",
+      tiers: [{ weeks: 1, count: 3, doseMg: 150 }],
+    }),
+  );
+
+  assert.equal(result.totalMg, 500);
+  assert.equal(result.lastVialLeftover, 0);
+  assert.equal(result.doses.length, 3);
+  assert.equal(Math.round(result.doses[0].doseMg * 1000) / 1000, 166.667);
+  assert.equal(result.doses[2].endsVial.unusedMg, 0);
+  assert.equal(result.cleanupSuggestions[0].applied, true);
+});
+
+test("computePlan keeps flexible cleanup on whole-number syringe units when possible", () => {
+  const result = computePlan(
+    plan({
+      vialMg: 500,
+      flexibleDose: true,
+      flexibleDosePct: 20,
+      scheduleMode: "interval",
+      everyDays: 3,
+      tiers: [
+        { weeks: 1, count: 1, doseMg: 75 },
+        { weeks: 1, count: 1, doseMg: 100 },
+        { weeks: 1, count: 1, doseMg: 125 },
+        { weeks: 1, count: 14, doseMg: 150 },
+      ],
+    }),
+    PREFS,
+  );
+
+  assert.equal(result.recommended.ml, 1.5);
+  assert.deepEqual(result.recommended.unitsByDose.slice(0, 4).map(Math.round), [25, 33, 42, 50]);
+  for (const units of result.recommended.unitsByDose.slice(0, 16)) {
+    assert.equal(Math.abs(units - Math.round(units)) < 0.001, true);
+  }
+});
+
+test("cleanup suggestions respect the flexible dose percentage", () => {
+  const result = buildDosePlan(
+    plan({
+      vialMg: 500,
+      flexibleDose: true,
+      flexibleDosePct: 10,
+      scheduleMode: "interval",
+      tiers: [{ weeks: 1, count: 4, doseMg: 150 }],
+    }),
+  );
+  assert.equal(result.lastVialLeftover, 400);
+  assert.equal(result.cleanupSuggestions.length, 0);
 });
 
 test("computePlan recommends the canonical NAD+ reconstitution", () => {
@@ -99,6 +165,20 @@ test("computePlan keeps every shot within a 100-unit syringe", () => {
   for (const units of result.recommended.unitsByDose) {
     assert.ok(units <= 100 && units >= 2, `units out of range: ${units}`);
   }
+});
+
+test("computePlan prefers whole-number syringe units", () => {
+  const result = computePlan(
+    plan({
+      peptideName: "Test",
+      vialMg: 30,
+      tiers: [{ weeks: 1, count: 1, doseMg: 2.5 }],
+    }),
+    { ...PREFS, idealUnits: 20 },
+  );
+
+  assert.equal(result.recommended.ml, 3);
+  assert.equal(result.recommended.unitsByDose[0], 25);
 });
 
 test("computePlan dates shots from the start date at the cadence interval", () => {
