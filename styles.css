@@ -7,27 +7,27 @@
 :root {
   color-scheme: light;
 
-  --color-bg: #f7f8f6;
-  --color-grid: rgba(22, 29, 32, 0.026);
+  --color-bg: #f5f5f3;
+  --color-grid: rgba(21, 23, 24, 0.035);
   --color-panel: #ffffff;
-  --color-panel-muted: #f1f4f2;
-  --color-panel-raised: #fbfcfb;
-  --color-text: #15191b;
-  --color-text-muted: #5f676b;
-  --color-text-subtle: #8d969b;
-  --color-border: #e0e5e2;
-  --color-border-strong: #ccd4d0;
-  --color-accent: #0f766e;
-  --color-accent-strong: #115e59;
-  --color-accent-soft: #e6f3f1;
-  --color-accent-border: #a8d8d2;
+  --color-panel-muted: #eeeeeb;
+  --color-panel-raised: #fafafa;
+  --color-text: #141414;
+  --color-text-muted: #5f5f5a;
+  --color-text-subtle: #85857d;
+  --color-border: #deded8;
+  --color-border-strong: #c8c8bf;
+  --color-accent: #1f1f1d;
+  --color-accent-strong: #000000;
+  --color-accent-soft: #ededeb;
+  --color-accent-border: #9b9b91;
   --color-warning: #9a6700;
   --color-warning-soft: #fff4d8;
   --color-warning-border: #e8c36d;
   --color-danger: #b42318;
   --color-danger-soft: #fff0ee;
   --color-danger-border: #f2b8b5;
-  --color-focus: rgba(15, 118, 110, 0.18);
+  --color-focus: rgba(20, 20, 20, 0.14);
 
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -41,9 +41,9 @@
   --space-7: 32px;
   --space-8: 44px;
 
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
+  --radius-xs: 1px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
   --control-h: 36px;
   --panel-pad: 22px;
 }
@@ -51,27 +51,27 @@
 :root.dark {
   color-scheme: dark;
 
-  --color-bg: #0d1112;
-  --color-grid: rgba(222, 232, 229, 0.028);
-  --color-panel: #14191a;
-  --color-panel-muted: #1a2021;
-  --color-panel-raised: #111617;
-  --color-text: #eef3f1;
-  --color-text-muted: #a2adaa;
-  --color-text-subtle: #727d7a;
-  --color-border: #263031;
-  --color-border-strong: #354243;
-  --color-accent: #5eead4;
-  --color-accent-strong: #99f6e4;
-  --color-accent-soft: #143735;
-  --color-accent-border: #26756d;
+  --color-bg: #0f0f0e;
+  --color-grid: rgba(245, 245, 239, 0.035);
+  --color-panel: #171716;
+  --color-panel-muted: #20201e;
+  --color-panel-raised: #131312;
+  --color-text: #f1f1ec;
+  --color-text-muted: #b0b0a8;
+  --color-text-subtle: #7d7d74;
+  --color-border: #30302d;
+  --color-border-strong: #484842;
+  --color-accent: #f1f1ec;
+  --color-accent-strong: #ffffff;
+  --color-accent-soft: #242421;
+  --color-accent-border: #6d6d64;
   --color-warning: #f4c152;
   --color-warning-soft: #382b12;
   --color-warning-border: #7b5f1a;
   --color-danger: #ffb4ab;
   --color-danger-soft: #3c1715;
   --color-danger-border: #7b2b26;
-  --color-focus: rgba(94, 234, 212, 0.2);
+  --color-focus: rgba(241, 241, 236, 0.16);
 }
 
 * {
@@ -92,7 +92,7 @@ body {
   background-image:
     linear-gradient(var(--color-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-size: 28px 28px;
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
@@ -255,7 +255,7 @@ p {
   min-height: 24px;
   padding: 0 9px;
   border: 1px solid var(--color-border-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-xs);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -305,14 +305,17 @@ p {
   flex: none;
   border: 1.5px solid var(--color-accent);
   border-radius: var(--radius-md);
-  background: var(--color-accent-soft);
+  background:
+    linear-gradient(90deg, transparent 49%, var(--color-accent-border) 49% 51%, transparent 51%),
+    linear-gradient(transparent 49%, var(--color-accent-border) 49% 51%, transparent 51%),
+    var(--color-panel);
 }
 
 .brand-mark::after {
   content: "";
   position: absolute;
-  inset: 9px;
-  border-radius: var(--radius-xs);
+  inset: 10px;
+  border-radius: 0;
   background: var(--color-accent);
 }
 
@@ -757,10 +760,8 @@ input[type="checkbox"] {
 /* ---- Results ---- */
 
 .hero-result {
-  border-color: var(--color-accent-border);
-  background:
-    linear-gradient(180deg, var(--color-accent-soft), transparent 130px),
-    var(--color-panel);
+  border-color: var(--color-border-strong);
+  background: var(--color-panel);
 }
 
 .hero-grid {
@@ -772,7 +773,7 @@ input[type="checkbox"] {
 
 .hero-result h2 {
   margin-bottom: 8px;
-  color: var(--color-accent-strong);
+  color: var(--color-text);
   font-family: var(--font-mono);
   font-size: clamp(34px, 6vw, 50px);
   font-variant-numeric: tabular-nums;
@@ -804,18 +805,18 @@ input[type="checkbox"] {
 .dose-badge {
   display: grid;
   place-items: center;
-  width: 126px;
-  aspect-ratio: 1;
+  width: 138px;
+  min-height: 112px;
   padding: var(--space-3);
-  border: 1px solid var(--color-accent-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
-  background: var(--color-panel);
+  background: var(--color-panel-muted);
   text-align: center;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent-soft) 75%, transparent);
+  box-shadow: inset 0 0 0 1px var(--color-panel);
 }
 
 .dose-badge span {
-  color: var(--color-accent-strong);
+  color: var(--color-text);
   font-family: var(--font-mono);
   font-size: 34px;
   font-variant-numeric: tabular-nums;
@@ -967,7 +968,7 @@ input[type="checkbox"] {
   align-items: center;
   padding: 1px 7px;
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-xs);
+  border-radius: 0;
   background: var(--color-panel);
   color: var(--color-text);
   font-size: 10px;
