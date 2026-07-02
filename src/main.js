@@ -14,7 +14,7 @@ import {
   num,
   clamp,
 } from "./state.js";
-import { createPersistence, fetchPeptideInfo } from "./persistence.js";
+import { createPersistence } from "./persistence.js";
 import {
   renderOutputs,
   renderAll,
@@ -23,6 +23,8 @@ import {
   writeScheduleControls,
   writePrefs,
   setSaveStatus,
+  populatePeptideList,
+  ADD_PEPTIDE_OPTION,
 } from "./render.js";
 
 const store = createStore();
@@ -54,7 +56,6 @@ function readPrefs() {
   prefs.previewCount = clamp(Math.round(num(document.getElementById("previewCount").value, 8)), 3, 24);
   prefs.maxUnits = Math.max(1, num(document.getElementById("maxUnits").value, 70));
   prefs.idealUnits = Math.max(1, num(document.getElementById("idealUnits").value, 60));
-  prefs.bacBottleMl = Math.max(1, num(document.getElementById("bacBottleMl").value, 30));
   prefs.bacWindowDays = Math.max(1, num(document.getElementById("bacWindowDays").value, 35));
 }
 
@@ -84,7 +85,7 @@ function syncTiersFromDom() {
 // When a name matches a known peptide, adopt its cadence (only when the name
 // actually changed, so manual cadence edits aren't stomped).
 function maybeApplyPeptideDefaults(plan, previousName) {
-  const info = lookupPeptide(plan.peptideName, store.aiLibrary);
+  const info = lookupPeptide(plan.peptideName);
   if (!info || plan.peptideName === previousName) {
     return;
   }
@@ -95,6 +96,17 @@ function maybeApplyPeptideDefaults(plan, previousName) {
   if (info.schedule.everyDays) {
     plan.everyDays = info.schedule.everyDays;
   }
+}
+
+function addPeptidePlan() {
+  const plan = createPlan({
+    peptideName: "",
+  });
+  store.plans.push(plan);
+  store.activePlanId = plan.id;
+  renderAll(store);
+  document.getElementById("peptideName").focus();
+  persistence.scheduleSave();
 }
 
 // ---- Event wiring ---------------------------------------------------------
@@ -108,6 +120,11 @@ form.addEventListener("input", (event) => {
   const plan = getActivePlan(store);
   const previousName = plan ? plan.peptideName : "";
   const previousMode = plan ? plan.scheduleMode : "";
+
+  if (isPeptide && target.value === ADD_PEPTIDE_OPTION) {
+    addPeptidePlan();
+    return;
+  }
 
   readActivePlan();
   readPrefs();
@@ -151,43 +168,6 @@ document.getElementById("addTier").addEventListener("click", () => {
   persistence.scheduleSave();
 });
 
-document.getElementById("aiLookupBtn").addEventListener("click", async (event) => {
-  const button = event.currentTarget;
-  const plan = getActivePlan(store);
-  const name = (plan?.peptideName || "").trim();
-  if (!name) {
-    return;
-  }
-
-  button.disabled = true;
-  const originalLabel = button.innerHTML;
-  button.innerHTML = `
-    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="4" y="4" width="16" height="16" rx="1" />
-      <path d="M12 7v5l3 2" />
-    </svg>
-    Looking up...
-  `;
-  try {
-    const data = await fetchPeptideInfo(name);
-    if (!data.known || !data.info) {
-      document.getElementById("peptideNote").textContent =
-        `No reliable dosing found for "${name}". Enter dose phases manually.`;
-      return;
-    }
-    store.aiLibrary[data.name] = data.info;
-    plan.peptideName = data.name;
-    maybeApplyPeptideDefaults(plan, ""); // force-adopt the fetched cadence
-    renderAll(store);
-    persistence.scheduleSave();
-  } catch (error) {
-    document.getElementById("peptideNote").textContent = error.message || "AI lookup failed.";
-  } finally {
-    button.disabled = false;
-    button.innerHTML = originalLabel;
-  }
-});
-
 document.getElementById("planChips").addEventListener("click", (event) => {
   const removeButton = event.target.closest(".plan-chip-remove");
   if (removeButton) {
@@ -208,19 +188,7 @@ document.getElementById("planChips").addEventListener("click", (event) => {
 });
 
 document.getElementById("addPlan").addEventListener("click", () => {
-  const plan = createPlan({
-    peptideName: "Tirzepatide",
-    vialMg: 30,
-    shotsPerWeek: 1,
-    flexibleDose: false,
-    flexibleDosePct: 10,
-    tiers: [{ weeks: 12, count: 12, doseMg: 2.5 }],
-  });
-  maybeApplyPeptideDefaults(plan, "");
-  store.plans.push(plan);
-  store.activePlanId = plan.id;
-  renderAll(store);
-  persistence.scheduleSave();
+  addPeptidePlan();
 });
 
 document.querySelectorAll(".segmented-button").forEach((button) => {
@@ -244,8 +212,61 @@ document.querySelectorAll(".app-tab").forEach((tab) => {
   });
 });
 
+document.getElementById("addManualBacBtn").addEventListener("click", () => {
+  const input = document.getElementById("manualBacDate");
+  const date = input.value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return;
+  }
+  store.prefs.manualBacOpenDates = [...new Set([...(store.prefs.manualBacOpenDates || []), date])].sort();
+  renderOutputs(store);
+  persistence.scheduleSave();
+});
+
+document.getElementById("manualBacList").addEventListener("click", (event) => {
+  const removeButton = event.target.closest(".manual-bac-remove");
+  if (!removeButton) {
+    return;
+  }
+  store.prefs.manualBacOpenDates = (store.prefs.manualBacOpenDates || []).filter(
+    (date) => date !== removeButton.dataset.date,
+  );
+  renderOutputs(store);
+  persistence.scheduleSave();
+});
+
+// ---- Tools menu ------------------------------------------------------------
+
+function closeSettingsMenu() {
+  document.getElementById("settingsMenu").classList.add("hidden");
+  document.getElementById("settingsBtn").setAttribute("aria-expanded", "false");
+}
+
+document.getElementById("settingsBtn").addEventListener("click", (event) => {
+  event.stopPropagation();
+  const menu = document.getElementById("settingsMenu");
+  const isOpen = !menu.classList.contains("hidden");
+  menu.classList.toggle("hidden", isOpen);
+  event.currentTarget.setAttribute("aria-expanded", String(!isOpen));
+});
+
+document.getElementById("settingsMenu").addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
+document.addEventListener("click", closeSettingsMenu);
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeSettingsMenu();
+  }
+});
+
+// ---- Theme -----------------------------------------------------------------
+
 document.getElementById("themeToggle").addEventListener("click", () => {
   setTheme(root.classList.contains("dark") ? "light" : "dark");
+  closeSettingsMenu();
 });
 
 // ---- Backup, calendar, print ----------------------------------------------
@@ -253,10 +274,12 @@ document.getElementById("themeToggle").addEventListener("click", () => {
 document.getElementById("exportBtn").addEventListener("click", () => {
   const stamp = dateInputValue(new Date());
   downloadFile(`peptide-planner-${stamp}.json`, JSON.stringify(serialize(store), null, 2), "application/json");
+  closeSettingsMenu();
 });
 
 document.getElementById("importBtn").addEventListener("click", () => {
   document.getElementById("importFile").click();
+  closeSettingsMenu();
 });
 
 document.getElementById("importFile").addEventListener("change", async (event) => {
@@ -295,6 +318,16 @@ document.getElementById("printBtn").addEventListener("click", () => {
   window.print();
 });
 
+document.getElementById("printScheduleBtn").addEventListener("click", () => {
+  setActiveTab("schedule");
+  document.body.classList.add("printing-schedule");
+  window.print();
+});
+
+window.addEventListener("afterprint", () => {
+  document.body.classList.remove("printing-schedule");
+});
+
 // ---- Tabs + theme ---------------------------------------------------------
 
 function setActiveTab(tabName) {
@@ -315,9 +348,10 @@ function setTheme(theme) {
 
 // ---- Boot -----------------------------------------------------------------
 
-setTheme(localStorage.getItem("peptide-planner-theme") || "light");
+setTheme(localStorage.getItem("peptide-planner-theme") || "dark");
 writePrefs(store.prefs);
 setActiveTab(store.activeTab);
+populatePeptideList();
 renderAll(store);
 
 persistence.load((payload) => {
@@ -325,6 +359,7 @@ persistence.load((payload) => {
   if (applied) {
     writePrefs(store.prefs);
     setActiveTab(store.activeTab);
+    populatePeptideList();
     renderAll(store);
   }
   return applied;

@@ -59,7 +59,7 @@ test("hydrate migrates v2 count-based tiers to hybrid tiers and keeps prefs/tab"
   ]);
 });
 
-test("hydrate v4 round-trips through serialize unchanged", () => {
+test("hydrate round-trips through serialize unchanged", () => {
   const store = createStore();
   store.plans = [createPlan({ peptideName: "Semaglutide", vialMg: 5, tiers: [{ weeks: 4, count: 4, doseMg: 0.25 }] })];
   store.activePlanId = store.plans[0].id;
@@ -67,13 +67,24 @@ test("hydrate v4 round-trips through serialize unchanged", () => {
 
   const payload = serialize(store);
   assert.equal(payload.version, STATE_VERSION);
-  assert.ok(!("aiLibrary" in payload), "aiLibrary must not be persisted");
+  assert.ok(!("settings" in payload), "runtime UI settings must not be persisted");
 
   const restored = createStore();
   assert.equal(hydrate(restored, payload), true);
   assert.equal(restored.plans[0].peptideName, "Semaglutide");
   assert.deepEqual(restored.plans[0].tiers, [{ weeks: 4, count: 4, doseMg: 0.25 }]);
   assert.equal(restored.prefs.idealUnits, 55);
+});
+
+test("hydrate normalizes manual BAC open dates", () => {
+  const store = createStore();
+  assert.equal(hydrate(store, {
+    version: 5,
+    prefs: { manualBacOpenDates: ["2026-02-10", "bad", "2026-02-01", "2026-02-10"] },
+    activePlanId: "x",
+    plans: [createPlan({ id: "x" })],
+  }), true);
+  assert.deepEqual(store.prefs.manualBacOpenDates, ["2026-02-01", "2026-02-10"]);
 });
 
 test("hydrate rejects empty or malformed payloads", () => {

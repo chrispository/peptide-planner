@@ -6,14 +6,14 @@
 import { dateInputValue } from "./format.js";
 import { dosesPerWeek } from "./calc.js";
 
-export const STATE_VERSION = 4;
+export const STATE_VERSION = 5;
 
 export const DEFAULT_PREFS = {
   previewCount: 8,
   maxUnits: 70,
   idealUnits: 60,
-  bacBottleMl: 30,
   bacWindowDays: 35,
+  manualBacOpenDates: [],
 };
 
 let planSeq = 0;
@@ -74,8 +74,21 @@ export function createStore() {
     plans,
     activePlanId: plans[0].id,
     activeTab: "reconstitution",
-    // Peptides fetched at runtime via AI lookup (not persisted).
-    aiLibrary: {},
+  };
+}
+
+function normalizeManualBacOpenDates(value) {
+  const dates = Array.isArray(value) ? value : [];
+  return [...new Set(dates.filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(String(date))))].sort();
+}
+
+function normalizePrefs(rawPrefs = {}) {
+  return {
+    previewCount: num(rawPrefs.previewCount, DEFAULT_PREFS.previewCount),
+    maxUnits: num(rawPrefs.maxUnits, DEFAULT_PREFS.maxUnits),
+    idealUnits: num(rawPrefs.idealUnits, DEFAULT_PREFS.idealUnits),
+    bacWindowDays: num(rawPrefs.bacWindowDays, DEFAULT_PREFS.bacWindowDays),
+    manualBacOpenDates: normalizeManualBacOpenDates(rawPrefs.manualBacOpenDates),
   };
 }
 
@@ -83,7 +96,7 @@ export function getActivePlan(store) {
   return store.plans.find((plan) => plan.id === store.activePlanId) || store.plans[0];
 }
 
-// The persisted shape. aiLibrary is intentionally left out — it's a runtime cache.
+// The persisted shape. Runtime-only UI state is intentionally left out.
 export function serialize(store) {
   return {
     version: STATE_VERSION,
@@ -102,15 +115,9 @@ export function hydrate(store, payload) {
   }
 
   // v1: a single plan stored under `fields` + top-level `tiers`/`scheduleMode`.
-  if (![2, 3, 4].includes(payload.version) && payload.fields) {
+  if (![2, 3, 4, 5].includes(payload.version) && payload.fields) {
     const f = payload.fields;
-    store.prefs = {
-      previewCount: num(f.previewCount, DEFAULT_PREFS.previewCount),
-      maxUnits: num(f.maxUnits, DEFAULT_PREFS.maxUnits),
-      idealUnits: num(f.idealUnits, DEFAULT_PREFS.idealUnits),
-      bacBottleMl: num(f.bacBottleMl, DEFAULT_PREFS.bacBottleMl),
-      bacWindowDays: num(f.bacWindowDays, DEFAULT_PREFS.bacWindowDays),
-    };
+    store.prefs = normalizePrefs(f);
     const plan = createPlan({
       peptideName: f.peptideName || "NAD+",
       vialMg: num(f.vialMg, 500),
@@ -132,7 +139,7 @@ export function hydrate(store, payload) {
     return false;
   }
 
-  store.prefs = { ...DEFAULT_PREFS, ...(payload.prefs || {}) };
+  store.prefs = normalizePrefs(payload.prefs);
   store.plans = payload.plans.map((raw) => {
     const plan = { ...createPlan(), ...raw, id: raw.id || uid() };
     plan.tiers = normalizeTiers(raw.tiers, plan);

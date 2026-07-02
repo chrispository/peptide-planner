@@ -22,11 +22,21 @@ import {
   mergeSchedule,
   summarizeDoses,
 } from "./calc.js";
-import { lookupPeptide } from "./peptides.js";
+import { lookupPeptide, PEPTIDE_NAMES } from "./peptides.js";
 import { getActivePlan } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
 const mg = (value) => formatNumber(value, 3);
+const escapeHtml = (value) =>
+  String(value ?? "").replace(/[&<>"']/g, (char) => (
+    {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;",
+    }[char]
+  ));
 const iconX = `
   <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M18 6 6 18" />
@@ -36,8 +46,11 @@ const iconX = `
 
 const el = {
   saveStatus: $("saveStatus"),
+  settingsBtn: $("settingsBtn"),
+  settingsMenu: $("settingsMenu"),
   planChips: $("planChips"),
   peptideName: $("peptideName"),
+  peptideOptions: $("peptideOptions"),
   vialMg: $("vialMg"),
   startDate: $("startDate"),
   shotsPerWeek: $("shotsPerWeek"),
@@ -45,7 +58,6 @@ const el = {
   flexibleDose: $("flexibleDose"),
   flexibleDosePct: $("flexibleDosePct"),
   peptideNote: $("peptideNote"),
-  aiLookupBtn: $("aiLookupBtn"),
   tierList: $("tierList"),
   phaseLastShot: $("phaseLastShot"),
   phaseVials: $("phaseVials"),
@@ -64,9 +76,6 @@ const el = {
   scheduleList: $("scheduleList"),
   scheduleSummary: $("scheduleSummary"),
   // schedule tab
-  scheduleTabTitle: $("scheduleTabTitle"),
-  scheduleTabSummary: $("scheduleTabSummary"),
-  scheduleTabUnits: $("scheduleTabUnits"),
   scheduleTabNext: $("scheduleTabNext"),
   scheduleTabLastShot: $("scheduleTabLastShot"),
   scheduleTabSpan: $("scheduleTabSpan"),
@@ -74,17 +83,57 @@ const el = {
   scheduleTabMeta: $("scheduleTabMeta"),
   scheduleTabList: $("scheduleTabList"),
   planSummaryList: $("planSummaryList"),
+  manualBacDate: $("manualBacDate"),
+  manualBacList: $("manualBacList"),
 };
 
 export function setSaveStatus(text) {
   el.saveStatus.textContent = text;
 }
 
+// ---- Peptide selector -----------------------------------------------------
+
+export const ADD_PEPTIDE_OPTION = "+ Add Peptide";
+
+export function populatePeptideList() {
+  const currentValue = el.peptideName.value;
+  el.peptideOptions.innerHTML = "";
+
+  const addOption = document.createElement("option");
+  addOption.value = ADD_PEPTIDE_OPTION;
+  el.peptideOptions.appendChild(addOption);
+
+  const allNames = new Set(PEPTIDE_NAMES);
+  if (currentValue && currentValue !== ADD_PEPTIDE_OPTION) {
+    allNames.add(currentValue);
+  }
+  for (const name of [...allNames].sort()) {
+    const option = document.createElement("option");
+    option.value = name;
+    el.peptideOptions.appendChild(option);
+  }
+  if (currentValue && allNames.has(currentValue)) {
+    el.peptideName.value = currentValue;
+  } else {
+    el.peptideName.value = "";
+  }
+}
+
+function ensurePeptideOption(name) {
+  if (!name || [...el.peptideOptions.options].some((option) => option.value === name)) {
+    return;
+  }
+  const option = document.createElement("option");
+  option.value = name;
+  el.peptideOptions.appendChild(option);
+}
+
 // ---- Form writers (targeted, never blanket) -------------------------------
 
 // Full plan -> inputs. Only call when no field is being edited (plan switch,
-// load, AI lookup).
+// load, import).
 export function writeFormValues(plan) {
+  ensurePeptideOption(plan.peptideName);
   el.peptideName.value = plan.peptideName;
   el.vialMg.value = plan.vialMg;
   el.startDate.value = plan.startDate;
@@ -112,8 +161,8 @@ export function writePrefs(prefs) {
   $("previewCount").value = prefs.previewCount;
   $("maxUnits").value = prefs.maxUnits;
   $("idealUnits").value = prefs.idealUnits;
-  $("bacBottleMl").value = prefs.bacBottleMl;
   $("bacWindowDays").value = prefs.bacWindowDays;
+  el.manualBacDate.value = dateInputValue(new Date());
 }
 
 // ---- Tier rows ------------------------------------------------------------
@@ -190,19 +239,16 @@ function updateTierCaptions(plan) {
 // ---- Peptide meta ---------------------------------------------------------
 
 function renderPeptideMeta(store, plan) {
-  const info = lookupPeptide(plan.peptideName, store.aiLibrary);
+  const info = lookupPeptide(plan.peptideName);
   const hasName = Boolean((plan.peptideName || "").trim());
 
   if (info) {
-    el.peptideNote.textContent = info.source === "ai" ? `AI suggestion · ${info.note}` : info.note;
-    el.aiLookupBtn.classList.add("hidden");
+    el.peptideNote.textContent = info.note;
   } else {
     el.peptideNote.textContent = hasName
-      ? "Not in the library — enter dose phases below, or look up typical dosing with AI."
+      ? "Not in the library — enter dose phases below."
       : "Custom peptide — enter your own dose phases below.";
-    el.aiLookupBtn.classList.toggle("hidden", !hasName);
   }
-
 }
 
 // ---- Plan switcher --------------------------------------------------------
@@ -214,7 +260,7 @@ function renderPlanChips(store) {
     chip.className = `chip plan-chip${plan.id === store.activePlanId ? " active chip--active" : ""}`;
     chip.dataset.id = plan.id;
     chip.innerHTML = `
-      <button class="plan-chip-label" type="button" data-id="${plan.id}">${plan.peptideName || "Untitled"}</button>
+      <button class="plan-chip-label" type="button" data-id="${plan.id}">${plan.peptideName || "Choose Peptide"}</button>
       ${store.plans.length > 1 ? `<button class="plan-chip-remove" type="button" data-remove="${plan.id}" aria-label="Remove peptide">${iconX}</button>` : ""}
     `;
     el.planChips.appendChild(chip);
@@ -242,7 +288,7 @@ function renderReconEmpty(message) {
   el.scheduleSummary.textContent = "No schedule to preview yet.";
 }
 
-function renderShotList(target, shots, { showTag } = {}) {
+function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } = {}) {
   target.innerHTML = "";
   const days = new Map();
   const addDayItem = (date, item) => {
@@ -257,26 +303,35 @@ function renderShotList(target, shots, { showTag } = {}) {
     addDayItem(firstShot.date, {
       type: "event",
       tone: "bac",
-      label: "BAC water opened",
+      label: `BAC Water ${bacNumber} Opened`,
     });
     addDayItem(firstShot.bacExpires, {
       type: "event",
       tone: "bac",
-      label: "BAC water expiring",
+      label: `BAC Water ${bacNumber} Expiring`,
     });
   }
+
+  events.forEach((event) => {
+    addDayItem(event.date, {
+      type: "event",
+      tone: event.tone,
+      label: event.label,
+      value: event.value,
+    });
+  });
 
   shots.forEach((shot) => {
     if (!showTag && shot.bacOpened) {
       addDayItem(shot.date, {
         type: "event",
         tone: "bac",
-        label: "BAC water opened",
+        label: `BAC Water ${bacNumber} Opened`,
       });
       addDayItem(shot.bacExpires, {
         type: "event",
         tone: "bac",
-        label: "BAC water expiring",
+        label: `BAC Water ${bacNumber} Expiring`,
       });
     }
     if (shot.opensVial) {
@@ -288,7 +343,7 @@ function renderShotList(target, shots, { showTag } = {}) {
       });
     }
     const meta = showTag
-      ? `<span class="shot-tag">${shot.peptideName}</span>${mg(shot.doseMg)} mg`
+      ? `<span class="shot-name">${escapeHtml(shot.peptideName)}</span><span class="shot-dose">${mg(shot.doseMg)} mg</span>`
       : `${mg(shot.doseMg)} mg · phase ${shot.tierIndex + 1}`;
     addDayItem(shot.date, {
       type: "shot",
@@ -316,8 +371,8 @@ function renderShotList(target, shots, { showTag } = {}) {
         .map((item) => {
           if (item.type === "shot") {
             return `
-              <div class="schedule-shot">
-                <span class="shot-number">${item.index + 1}</span>
+              <div class="schedule-shot${showTag ? " schedule-shot--named" : ""}">
+                ${showTag ? "" : `<span class="shot-number">${item.index + 1}</span>`}
                 <div class="shot-meta">${item.meta}</div>
                 <span class="pill">${item.units != null ? `${formatNumber(item.units, 1)} units` : "-"}</span>
               </div>
@@ -401,9 +456,43 @@ function renderRecon(store, plan) {
 
 // ---- Combined schedule tab ------------------------------------------------
 
+function renderManualBacList(prefs) {
+  const dates = prefs.manualBacOpenDates || [];
+  if (dates.length === 0) {
+    el.manualBacList.innerHTML = `<p class="empty-hint">No extra BAC bottles tracked.</p>`;
+    return;
+  }
+
+  el.manualBacList.innerHTML = dates
+    .map((date) => `
+      <div class="manual-bac-item">
+        <span>${formatDate(parseStartDate(date))}</span>
+        <button class="button button--icon icon-button manual-bac-remove" type="button" data-date="${date}" aria-label="Remove BAC opened ${date}">
+          ${iconX}
+        </button>
+      </div>
+    `)
+    .join("");
+}
+
 function renderScheduleTab(store) {
   const computed = computeAll(store.plans, store.prefs);
-  el.scheduleTabUnits.textContent = String(computed.length);
+  renderManualBacList(store.prefs);
+  const computedHasShots = computed.some((entry) => entry.result.shots.length > 0);
+  const manualBacStartNumber = computedHasShots ? 2 : 1;
+  const manualBacEvents = (store.prefs.manualBacOpenDates || []).flatMap((date, index) => {
+    const opened = parseStartDate(date);
+    const bacNumber = manualBacStartNumber + index;
+    return [
+      { date: opened, tone: "bac", kind: "opened", label: `BAC Water ${bacNumber} Opened` },
+      {
+        date: addDays(opened, store.prefs.bacWindowDays),
+        tone: "bac",
+        kind: "expires",
+        label: `BAC Water ${bacNumber} Expiring`,
+      },
+    ];
+  });
 
   el.planSummaryList.innerHTML = "";
   if (computed.length === 0) {
@@ -436,14 +525,17 @@ function renderScheduleTab(store) {
 
   const merged = mergeSchedule(computed);
   if (merged.length === 0) {
-    el.scheduleTabTitle.textContent = "0 shots";
-    el.scheduleTabSummary.textContent = "Add a peptide plan to build a schedule.";
     el.scheduleTabNext.textContent = "-";
     el.scheduleTabLastShot.textContent = "-";
     el.scheduleTabSpan.textContent = "-";
-    el.scheduleTabUseBy.textContent = "-";
+    const manualUseByDates = manualBacEvents
+      .filter((event) => event.kind === "expires")
+      .map((event) => event.date);
+    el.scheduleTabUseBy.textContent = manualUseByDates.length
+      ? formatDate(manualUseByDates.sort((a, b) => a - b)[0])
+      : "-";
     el.scheduleTabMeta.textContent = "All planned injections, merged in date order.";
-    el.scheduleTabList.innerHTML = "";
+    renderShotList(el.scheduleTabList, [], { showTag: true, events: manualBacEvents });
     return;
   }
 
@@ -451,19 +543,21 @@ function renderScheduleTab(store) {
   const nextShot = merged.find((shot) => shot.date >= today) || merged[0];
   const lastDate = merged[merged.length - 1].date;
   const spanDays = daysBetween(merged[0].date, lastDate);
-  const soonestUseBy = computed.map((e) => e.result.bacUseBy).sort((a, b) => a - b)[0];
+  const sharedBacUseBy = addDays(merged[0].date, store.prefs.bacWindowDays);
+  const useByDates = [
+    sharedBacUseBy,
+    ...manualBacEvents.filter((event) => event.kind === "expires").map((event) => event.date),
+  ];
+  const soonestUseBy = useByDates.sort((a, b) => a - b)[0];
   const names = computed.map((e) => e.plan.peptideName || "Untitled").join(", ");
 
-  el.scheduleTabTitle.textContent = `${merged.length} shots`;
-  el.scheduleTabSummary.textContent =
-    `${computed.length} ${computed.length === 1 ? "peptide" : "peptides"} across ${spanDays} days.`;
   el.scheduleTabNext.textContent = formatDate(nextShot.date);
   el.scheduleTabLastShot.textContent = formatDate(lastDate);
   el.scheduleTabSpan.textContent = `${spanDays} days`;
   el.scheduleTabUseBy.textContent = formatDate(soonestUseBy);
   el.scheduleTabMeta.textContent = `${merged.length} injections across ${names}.`;
 
-  renderShotList(el.scheduleTabList, merged, { showTag: true });
+  renderShotList(el.scheduleTabList, merged, { showTag: true, events: manualBacEvents });
 }
 
 // ---- Public entry points --------------------------------------------------
@@ -492,5 +586,6 @@ export function renderAll(store) {
   writeFormValues(plan);
   writeScheduleControls(plan);
   renderTiers(plan);
+  populatePeptideList();
   renderOutputs(store);
 }

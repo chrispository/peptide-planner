@@ -101,7 +101,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -299,24 +300,10 @@ p {
 }
 
 .brand-mark {
-  position: relative;
   width: 34px;
   height: 34px;
   flex: none;
-  border: 1.5px solid var(--color-accent);
-  border-radius: var(--radius-md);
-  background:
-    linear-gradient(90deg, transparent 49%, var(--color-accent-border) 49% 51%, transparent 51%),
-    linear-gradient(transparent 49%, var(--color-accent-border) 49% 51%, transparent 51%),
-    var(--color-panel);
-}
-
-.brand-mark::after {
-  content: "";
-  position: absolute;
-  inset: 10px;
-  border-radius: 0;
-  background: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .eyebrow {
@@ -337,6 +324,30 @@ h1 {
   gap: var(--space-2);
 }
 
+.settings-menu {
+  position: relative;
+}
+
+.settings-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: var(--space-2);
+  min-width: 156px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-panel);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.settings-popover .button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
 .save-status {
   display: inline-flex;
   align-items: center;
@@ -351,36 +362,7 @@ h1 {
   white-space: nowrap;
 }
 
-/* ---- Notice + tabs ---- */
-
-.notice {
-  position: relative;
-  margin-bottom: var(--space-6);
-  padding: 12px 14px 12px 62px;
-  border: 1px solid var(--color-warning-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-warning-soft);
-  color: var(--color-text-muted);
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-
-.notice::before {
-  content: "NOTE";
-  position: absolute;
-  left: 14px;
-  top: 13px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: var(--color-warning);
-}
-
-.notice strong {
-  color: var(--color-text);
-  font-weight: 600;
-}
+/* ---- Tabs ---- */
 
 .app-tabs {
   display: flex;
@@ -540,6 +522,13 @@ h1 {
   align-items: center;
 }
 
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
 /* ---- Fields ---- */
 
 .field {
@@ -554,7 +543,8 @@ h1 {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 38px;
   border: 1px solid var(--color-border-strong);
@@ -566,8 +556,18 @@ select {
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
+textarea {
+  padding: 9px 11px;
+  min-height: auto;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-focus);
 }
@@ -907,6 +907,10 @@ input[type="checkbox"] {
   align-items: center;
 }
 
+.schedule-shot--named {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .schedule-event {
   display: flex;
   justify-content: space-between;
@@ -1024,38 +1028,81 @@ input[type="checkbox"] {
   padding: 0 14px;
   border-color: var(--color-accent);
   color: var(--color-accent-strong);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
-#schedulePanel .hero-result {
-  padding: 14px 18px;
+#scheduleTabList .shot-meta {
+  gap: 10px;
+  min-width: 0;
+  margin-top: 0;
+  color: var(--color-text);
 }
 
-#schedulePanel .hero-result h2 {
-  margin-bottom: 5px;
-  font-size: 22px;
+#scheduleTabList .shot-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
-#schedulePanel .dose-badge {
-  width: 74px;
-  padding: var(--space-2);
+#scheduleTabList .shot-dose {
+  flex: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 
-#schedulePanel .dose-badge span {
-  font-size: 22px;
+.manual-bac-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: end;
 }
 
-#schedulePanel .dose-badge small {
-  font-size: 8.5px;
+.manual-bac-list {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 
-#schedulePanel .hero-grid {
-  gap: var(--space-4);
-}
-
-#schedulePanel .hero-result p:not(.eyebrow) {
+.manual-bac-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 38px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-mono);
   font-size: 12px;
+}
+
+.manual-bac-details {
+  margin-bottom: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.manual-bac-details summary {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.manual-bac-details[open] {
+  padding-bottom: var(--space-4);
 }
 
 /* ---- Print: clean single-vial reconstitution card ---- */
@@ -1070,7 +1117,6 @@ input[type="checkbox"] {
   }
 
   .topbar,
-  .notice,
   .app-tabs,
   .plan-bar,
   .controls,
@@ -1096,6 +1142,27 @@ input[type="checkbox"] {
 
   .results {
     gap: 12px;
+  }
+
+  body.printing-schedule .controls,
+  body.printing-schedule #reconstitutionPanel,
+  body.printing-schedule .plan-bar,
+  body.printing-schedule .manual-bac-details,
+  body.printing-schedule .section-actions {
+    display: none !important;
+  }
+
+  body.printing-schedule #schedulePanel {
+    display: block !important;
+  }
+
+  body.printing-schedule .schedule-page {
+    gap: 12px;
+  }
+
+  body.printing-schedule .schedule-day,
+  body.printing-schedule .plan-summary {
+    break-inside: avoid;
   }
 }
 
@@ -1140,18 +1207,12 @@ input[type="checkbox"] {
   }
 
   .top-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    justify-content: space-between;
     width: 100%;
   }
 
-  .save-status,
-  #themeToggle {
-    grid-column: span 2;
-  }
-
-  .save-status {
-    justify-content: center;
+  .settings-popover {
+    right: 0;
   }
 
   .plan-bar-print {
@@ -1196,8 +1257,20 @@ input[type="checkbox"] {
     grid-template-columns: 30px minmax(0, 1fr);
   }
 
+  .schedule-shot--named {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
   .schedule-shot .pill {
     grid-column: 2;
+  }
+
+  .schedule-shot--named .pill {
+    grid-column: 2;
+  }
+
+  .manual-bac-control {
+    grid-template-columns: 1fr;
   }
 
   .tier-main {

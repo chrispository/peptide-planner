@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -20,37 +20,51 @@
     <main class="app-shell">
       <header class="topbar">
         <div class="brand">
-          <span class="brand-mark" aria-hidden="true"></span>
+          <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
+            <g fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="4">
+              <path stroke-linecap="round" d="M39 23L25 9m19 8L31 4m3.999 14.999l5-5m-11-1l5-5M11 37l-5 5" />
+              <path d="M28 12L12 28l-1 9l9-1l16-16z" />
+            </g>
+          </svg>
           <div>
-            <p class="eyebrow">Peptide planner</p>
-            <h1>Reconstitution &amp; dosing</h1>
+            <h1>Peptide Planner</h1>
           </div>
         </div>
         <div class="top-actions">
           <span class="save-status" id="saveStatus">Not saved</span>
-          <button class="button button--secondary theme-toggle" id="exportBtn" type="button">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <path d="M7 10l5 5 5-5" />
-              <path d="M12 15V3" />
-            </svg>
-            Export
-          </button>
-          <button class="button button--secondary theme-toggle" id="importBtn" type="button">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <path d="M17 8l-5-5-5 5" />
-              <path d="M12 3v12" />
-            </svg>
-            Import
-          </button>
+          <div class="settings-menu">
+            <button class="button button--icon icon-button" id="settingsBtn" type="button" aria-label="Settings" aria-expanded="false" aria-controls="settingsMenu">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+            <div class="settings-popover hidden" id="settingsMenu">
+              <button class="button button--secondary theme-toggle" id="themeToggle" type="button" aria-label="Toggle color mode">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                </svg>
+                <span id="themeLabel">Light</span>
+              </button>
+              <button class="button button--secondary theme-toggle" id="importBtn" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <path d="M17 8l-5-5-5 5" />
+                  <path d="M12 3v12" />
+                </svg>
+                Import
+              </button>
+              <button class="button button--secondary theme-toggle" id="exportBtn" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <path d="M7 10l5 5 5-5" />
+                  <path d="M12 15V3" />
+                </svg>
+                Export
+              </button>
+            </div>
+          </div>
           <input id="importFile" type="file" accept="application/json,.json" hidden />
-          <button class="button button--secondary theme-toggle" id="themeToggle" type="button" aria-label="Toggle color mode">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-            </svg>
-            <span id="themeLabel">Dark</span>
-          </button>
         </div>
       </header>
 
@@ -89,7 +103,8 @@
             <div class="grid-2">
               <label class="field">
                 <span>Peptide</span>
-                <input id="peptideName" type="text" value="NAD+" autocomplete="off" />
+                <input id="peptideName" list="peptideOptions" placeholder="Choose Peptide" autocomplete="off" />
+                <datalist id="peptideOptions"></datalist>
               </label>
               <label class="field">
                 <span>Vial amount (mg)</span>
@@ -98,13 +113,6 @@
             </div>
 
             <p class="peptide-note" id="peptideNote"></p>
-            <button class="button button--ghost ghost-button hidden" id="aiLookupBtn" type="button">
-              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z" />
-                <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z" />
-              </svg>
-              Look up dosing with AI
-            </button>
 
             <div class="section-heading compact">
               <h2>Schedule</h2>
@@ -152,7 +160,7 @@
                 <small>Allow optional dose adjustments to finish opened vials cleanly.</small>
               </span>
               <span class="toggle-number">
-                <small>Max adjustment</small>
+                <small>Max Adjustment %</small>
                 <input id="flexibleDosePct" type="number" min="1" max="100" step="1" value="10" />
               </span>
             </label>
@@ -193,10 +201,6 @@
             </div>
 
             <div class="grid-2">
-              <label class="field">
-                <span>BAC bottle size (mL)</span>
-                <input id="bacBottleMl" type="number" min="1" step="1" value="30" />
-              </label>
               <label class="field">
                 <span>BAC use window</span>
                 <select id="bacWindowDays">
@@ -257,20 +261,6 @@
 
       <section class="tab-panel" id="schedulePanel" data-panel="schedule">
         <div class="schedule-page">
-          <article class="hero-result">
-            <p class="eyebrow">Combined schedule</p>
-            <div class="hero-grid">
-              <div>
-                <h2 id="scheduleTabTitle">5 shots</h2>
-                <p id="scheduleTabSummary">Every injection across your peptides.</p>
-              </div>
-              <div class="dose-badge">
-                <span id="scheduleTabUnits">1</span>
-                <small>peptides</small>
-              </div>
-            </div>
-          </article>
-
           <div class="stat-grid">
             <article class="stat">
               <span>Next shot</span>
@@ -293,32 +283,59 @@
           <article class="panel">
             <div class="section-heading row">
               <div>
-                <h2>Per-peptide summary</h2>
-                <p>One row per active peptide plan.</p>
+                <h2>Full schedule</h2>
+                <p id="scheduleTabMeta">All planned injections, merged in date order.</p>
+              </div>
+              <div class="section-actions">
+                <button class="button button--secondary small-button" id="printScheduleBtn" type="button">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 9V2h12v7" />
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                    <path d="M6 14h12v8H6z" />
+                  </svg>
+                  Print schedule
+                </button>
+                <button class="button button--secondary small-button" id="icsBtn" type="button">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8 2v4" />
+                    <path d="M16 2v4" />
+                    <path d="M3 10h18" />
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <path d="M12 14v4" />
+                    <path d="M10 16h4" />
+                  </svg>
+                  Add to calendar
+                </button>
               </div>
             </div>
-            <div class="plan-summary-list" id="planSummaryList"></div>
+            <details class="manual-bac-details">
+              <summary>BAC water tracking</summary>
+              <div class="manual-bac-control">
+                <label class="field">
+                  <span>Opened date</span>
+                  <input id="manualBacDate" type="date" />
+                </label>
+                <button class="button button--secondary small-button" id="addManualBacBtn" type="button">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h14" />
+                    <path d="M12 5v14" />
+                  </svg>
+                  Add BAC
+                </button>
+              </div>
+              <div class="manual-bac-list" id="manualBacList"></div>
+            </details>
+            <div class="schedule-list" id="scheduleTabList"></div>
           </article>
 
           <article class="panel">
             <div class="section-heading row">
               <div>
-                <h2>Full schedule</h2>
-                <p id="scheduleTabMeta">All planned injections, merged in date order.</p>
+                <h2>Per-peptide summary</h2>
+                <p>One row per active peptide plan.</p>
               </div>
-              <button class="button button--secondary small-button" id="icsBtn" type="button">
-                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M8 2v4" />
-                  <path d="M16 2v4" />
-                  <path d="M3 10h18" />
-                  <rect x="3" y="4" width="18" height="18" rx="2" />
-                  <path d="M12 14v4" />
-                  <path d="M10 16h4" />
-                </svg>
-                Add to calendar
-              </button>
             </div>
-            <div class="schedule-list" id="scheduleTabList"></div>
+            <div class="plan-summary-list" id="planSummaryList"></div>
           </article>
         </div>
       </section>

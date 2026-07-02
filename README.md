@@ -1,73 +1,77 @@
 # Peptide Dose Planner
 
-A local, single-user tool for planning peptide reconstitution and injection
-schedules. Pick a peptide, enter the vial amount and dose phases, and it works
-out how much bacteriostatic water to add, the syringe units per shot, how long a
-vial lasts, and a dated injection schedule across one or more peptides.
+Local peptide reconstitution and scheduling planner. Choose a peptide, enter vial
+amounts and dose phases, then calculate BAC water volume, syringe units, vial
+duration, and a combined injection schedule.
 
-> **Planning tool only.** Suggested doses are generic starting points, not
-> medical advice. Verify dose, concentration, route, storage, and beyond-use
-> dates with a qualified clinician or pharmacist.
-
-## Requirements
-
-- Node.js **22.5+** (uses the built-in `node:sqlite` and `node:test` — no npm
-  dependencies, no build step).
+This is a planning utility, not medical advice. Verify dosing, concentration,
+route, storage, and beyond-use dates with a qualified clinician or pharmacist.
 
 ## Run
+
+Requires Node.js 22.5+.
 
 ```sh
 npm start
 ```
 
-Then open <http://127.0.0.1:4173/>. The port can be overridden with `PORT`.
+Open `http://127.0.0.1:4173/`. Optional local overrides can go in `.env`:
+
+```sh
+PORT=4173
+SHOTS_DATA_DIR=./data
+```
 
 ## Data
 
-Your plan is autosaved to a single SQLite database at `data/shots.sqlite`. This
-is the only place your data lives — it is gitignored and never overwritten by the
-dev/test tooling (which uses `SHOTS_DATA_DIR`).
+The app autosaves one current planner snapshot to SQLite:
 
-- **Back it up** from the app: **Export** (top bar) downloads a JSON snapshot;
-  **Import** restores one. Or just copy the file:
+```txt
+data/shots.sqlite
+```
 
-  ```sh
-  cp data/shots.sqlite ~/peptide-backup-$(date +%F).sqlite
-  ```
+Use the gear menu to import/export JSON backups. The schedule page can export an
+`.ics` calendar file, and the reconstitution page can print a vial card.
 
-- The schedule tab can **Export to calendar** (`.ics`) and the reconstitution tab
-  can **Print card** for a single-vial reference.
+## Database Schema
 
-## AI peptide lookup (optional)
+Fresh databases use one app-owned table plus SQLite `user_version = 1`.
 
-For peptides not in the built-in library, the app can fetch typical dosing from
-DeepSeek. Copy `.env.example` to `.env` and set `DEEPSEEK_API_KEY`. Without a key,
-everything else works; only the "Look up dosing with AI" button is disabled.
+```sql
+CREATE TABLE planner_snapshots (
+  key TEXT PRIMARY KEY,
+  payload_json TEXT NOT NULL,
+  peptide_name TEXT,
+  vial_mg REAL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+) STRICT;
+```
+
+Only the `current` key is used today. `payload_json` contains the full serialized
+planner state; `peptide_name` and `vial_mg` are lightweight indexed-ready summary
+fields for future list/history views. Obsolete settings tables from older local
+builds are dropped on startup.
 
 ## Scripts
 
 ```sh
-npm start   # run the server
-npm test    # run the unit tests (calc engine + state migrations)
-npm run check  # syntax-check the server
+npm start      # run the local server
+npm test       # run calc and state tests
+npm run check  # syntax-check server.js
 ```
 
-## Project layout
+## Structure
 
+```txt
+server.js                 Static server and SQLite persistence API
+index.html / styles.css   App shell and UI styling
+src/calc.js               Pure dose, water, and schedule engine
+src/peptides.js           Built-in peptide reference data
+src/state.js              App state, defaults, migrations
+src/render.js             DOM rendering
+src/main.js               Event wiring and app lifecycle
+src/persistence.js        Autosave/load client
+src/exporters.js          JSON and calendar exports
+test/                     node:test suites
 ```
-server.js                 Static file + JSON API server, SQLite persistence
-index.html / styles.css   App shell and styling
-src/
-  calc.js        Pure dose/water/schedule engine (no DOM)
-  format.js      Number and date helpers
-  peptides.js    Built-in peptide library + lookup
-  state.js       Data model, defaults, save/load + version migration
-  persistence.js Debounced autosave against the API
-  render.js      All DOM rendering
-  exporters.js   JSON backup + .ics calendar generation
-  main.js        Entry point: owns state, wires events
-test/            node:test suites for calc and state
-```
-
-The frontend is plain ES modules loaded directly by the browser (`<script
-type="module">`) — there is nothing to compile.

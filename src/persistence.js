@@ -1,7 +1,8 @@
-// Talks to the server's /api/planner/current endpoint. Debounced autosave with a
-// keepalive flush so a pending edit survives the tab closing.
+// Talks to the server's /api/planner/current endpoint.
+// Debounced autosave with a keepalive flush so a pending edit survives the tab
+// closing.
 
-const ENDPOINT = "/api/planner/current";
+const PLANNER_ENDPOINT = "/api/planner/current";
 const SAVE_DELAY_MS = 450;
 
 // Creates a persistence controller bound to:
@@ -18,7 +19,7 @@ export function createPersistence({ getPayload, onStatus }) {
 
   async function load(applyPayload) {
     try {
-      const response = await fetch(ENDPOINT);
+      const response = await fetch(PLANNER_ENDPOINT);
       if (response.status === 404) {
         ready = true;
         setStatus("Ready to save");
@@ -45,7 +46,7 @@ export function createPersistence({ getPayload, onStatus }) {
     pending = false;
     setStatus("Saving…");
     try {
-      const response = await fetch(ENDPOINT, {
+      const response = await fetch(PLANNER_ENDPOINT, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(getPayload()),
@@ -77,7 +78,7 @@ export function createPersistence({ getPayload, onStatus }) {
     }
     window.clearTimeout(timer);
     pending = false;
-    fetch(ENDPOINT, {
+    fetch(PLANNER_ENDPOINT, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(getPayload()),
@@ -95,14 +96,4 @@ export function createPersistence({ getPayload, onStatus }) {
   });
 
   return { load, scheduleSave, flush };
-}
-
-// Ask the server to look a peptide up via the AI endpoint.
-export async function fetchPeptideInfo(name) {
-  const response = await fetch(`/api/peptide-info?name=${encodeURIComponent(name)}`);
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || `Lookup failed (${response.status}).`);
-  }
-  return data;
 }

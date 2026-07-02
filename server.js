@@ -14,17 +14,12 @@ const dataDir = process.env.SHOTS_DATA_DIR
 const dbPath = path.join(dataDir, "shots.sqlite");
 const port = Number(process.env.PORT || 4173);
 
-// Load a local .env (gitignored) if present so DEEPSEEK_API_KEY etc. are picked
-// up without exporting them by hand. No-op when the file is missing.
+// Load a local .env (gitignored) if present. No-op when the file is missing.
 try {
   process.loadEnvFile(path.join(rootDir, ".env"));
 } catch {
   // .env is optional.
 }
-
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "";
-const DEEPSEEK_URL = process.env.DEEPSEEK_URL || "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -49,6 +44,8 @@ function openDatabase() {
     timeout: 5000,
   });
 
+  db.exec("DROP TABLE IF EXISTS settings;");
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS planner_snapshots (
       key TEXT PRIMARY KEY,
@@ -59,6 +56,8 @@ function openDatabase() {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     ) STRICT;
   `);
+
+  db.exec("PRAGMA user_version = 1;");
 
   return db;
 }
@@ -110,117 +109,7 @@ function sanitizePlannerPayload(payload) {
   };
 }
 
-const PEPTIDE_SYSTEM_PROMPT = `You are a reference for peptide reconstitution planning. Given a peptide name, return ONLY a JSON object with commonly-cited dosing used for planning. Use exactly this shape:
-{
-  "known": boolean,
-  "commonVialsMg": number[],
-  "doseStepsMg": number[],
-  "defaultDoseMg": number,
-  "schedule": { "mode": "weekly" | "interval", "shotsPerWeek": number, "everyDays": number },
-  "titrating": boolean,
-  "note": string
-}
-All amounts are in milligrams (mg); convert mcg to mg. doseStepsMg should be ascending typical per-dose amounts. Set schedule.mode to "weekly" with shotsPerWeek, or "interval" with everyDays. titrating is true when the dose is normally ramped up over time (e.g. GLP-1 agonists). note is one or two plain-text sentences. If you do not recognize the peptide or lack reliable dosing info, return {"known": false}. Output JSON only, no prose.`;
-
-async function fetchPeptideInfo(name) {
-  const response = await fetch(DEEPSEEK_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: DEEPSEEK_MODEL,
-      messages: [
-        { role: "system", content: PEPTIDE_SYSTEM_PROMPT },
-        { role: "user", content: `Peptide: ${name}` },
-      ],
-      response_format: { type: "json_object" },
-      stream: false,
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`DeepSeek request failed (${response.status}): ${detail.slice(0, 200)}`);
-  }
-
-  const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content || "{}";
-  return JSON.parse(content);
-}
-
-function toPositiveNumberArray(value) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value
-    .map(Number)
-    .filter((entry) => Number.isFinite(entry) && entry > 0)
-    .slice(0, 12);
-}
-
-function sanitizePeptideInfo(raw) {
-  if (!raw || raw.known === false || typeof raw !== "object") {
-    return null;
-  }
-
-  const doseStepsMg = toPositiveNumberArray(raw.doseStepsMg).sort((a, b) => a - b);
-  const defaultDoseMg = Number(raw.defaultDoseMg);
-  const hasDose = doseStepsMg.length > 0 || Number.isFinite(defaultDoseMg);
-  if (!hasDose) {
-    return null;
-  }
-
-  const mode = raw.schedule?.mode === "interval" ? "interval" : "weekly";
-  const schedule = { mode };
-  if (mode === "weekly") {
-    schedule.shotsPerWeek = Number(raw.schedule?.shotsPerWeek) > 0 ? Number(raw.schedule.shotsPerWeek) : 1;
-  } else {
-    schedule.everyDays = Number(raw.schedule?.everyDays) > 0 ? Number(raw.schedule.everyDays) : 1;
-  }
-
-  const steps = doseStepsMg.length ? doseStepsMg : [defaultDoseMg];
-
-  return {
-    commonVialsMg: toPositiveNumberArray(raw.commonVialsMg),
-    doseStepsMg: steps,
-    defaultDoseMg: Number.isFinite(defaultDoseMg) ? defaultDoseMg : steps[0],
-    schedule,
-    titrating: Boolean(raw.titrating),
-    note: String(raw.note || "").slice(0, 400),
-  };
-}
-
-async function handlePeptideInfo(req, res, url) {
-  if (req.method !== "GET") {
-    sendError(res, 405, "Method not allowed.");
-    return;
-  }
-
-  if (!DEEPSEEK_API_KEY) {
-    sendError(res, 503, "AI lookup is not configured. Set DEEPSEEK_API_KEY in your environment or .env file.");
-    return;
-  }
-
-  const name = (url.searchParams.get("name") || "").trim().slice(0, 80);
-  if (!name) {
-    sendError(res, 400, "Provide a peptide name.");
-    return;
-  }
-
-  try {
-    const info = sanitizePeptideInfo(await fetchPeptideInfo(name));
-    if (!info) {
-      sendJson(res, 200, { known: false, name });
-      return;
-    }
-    sendJson(res, 200, { known: true, name, info });
-  } catch (error) {
-    sendError(res, 502, error.message || "AI lookup failed.");
-  }
-}
+// ---- Planner state --------------------------------------------------------
 
 function getCurrentPlanner(db) {
   return db
@@ -234,11 +123,6 @@ function getCurrentPlanner(db) {
 
 async function handleApi(req, res, db, url) {
   const pathname = url.pathname;
-
-  if (pathname === "/api/peptide-info") {
-    await handlePeptideInfo(req, res, url);
-    return;
-  }
 
   if (pathname !== "/api/planner/current") {
     sendError(res, 404, "API route not found.");

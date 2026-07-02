@@ -18,9 +18,17 @@ export const PEPTIDE_LIBRARY = {
     titrating: true,
     note: "GLP-1 agonist. One injection per week, titrated up monthly.",
   },
+  "Retatrutide": {
+    commonVialsMg: [2, 4, 6, 8, 12],
+    doseStepsMg: [2, 4, 6, 8, 12],
+    defaultDoseMg: 2,
+    schedule: { mode: "weekly", shotsPerWeek: 1 },
+    titrating: true,
+    note: "GLP-1/GIP/glucagon triple agonist. Once weekly, titrated every 4 weeks.",
+  },
   "NAD+": {
     commonVialsMg: [100, 500, 1000],
-    doseStepsMg: [50, 100],
+    doseStepsMg: [25, 50, 100],
     defaultDoseMg: 100,
     schedule: { mode: "weekly", shotsPerWeek: 2 },
     titrating: false,
@@ -42,13 +50,204 @@ export const PEPTIDE_LIBRARY = {
     titrating: false,
     note: "Loading phase often 2–2.5 mg twice weekly.",
   },
+  "AOD-9604": {
+    commonVialsMg: [5],
+    doseStepsMg: [0.25, 0.3],
+    defaultDoseMg: 0.25,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "hGH fragment 177-191. Daily, often cycled 5 days on / 2 off.",
+  },
+  "Ipamorelin": {
+    commonVialsMg: [2, 5],
+    doseStepsMg: [0.1, 0.2, 0.3],
+    defaultDoseMg: 0.2,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "GHRP. 100-300 mcg 1–3x daily. Often paired with CJC-1295 no DAC.",
+  },
+  "CJC-1295 (no DAC)": {
+    commonVialsMg: [2, 5],
+    doseStepsMg: [0.1],
+    defaultDoseMg: 0.1,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "GHRH analog (Mod GRF 1-29). 100 mcg 1–3x daily. Commonly paired with Ipamorelin.",
+  },
+  "Sermorelin": {
+    commonVialsMg: [3, 6, 9, 15],
+    doseStepsMg: [0.2, 0.3, 0.5],
+    defaultDoseMg: 0.3,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "GHRH peptide. Daily at bedtime, 200–500 mcg.",
+  },
+  "Tesamorelin": {
+    commonVialsMg: [10, 20],
+    doseStepsMg: [1, 2],
+    defaultDoseMg: 2,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "GHRH analog (Egrifta). 2 mg daily for visceral fat reduction.",
+  },
+  "Melanotan II": {
+    commonVialsMg: [10],
+    doseStepsMg: [0.1, 0.25, 0.5, 1],
+    defaultDoseMg: 0.25,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: true,
+    note: "MT2. Start at ~100 mcg to assess tolerance. Maintenance 250–500 mcg every 2–3 days.",
+  },
+  "GHK-Cu": {
+    commonVialsMg: [50, 100],
+    doseStepsMg: [1, 2],
+    defaultDoseMg: 1,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Copper peptide. 1–2 mg 1–2x daily, commonly cycled.",
+  },
+  "Thymosin Alpha-1": {
+    commonVialsMg: [1.6, 3.2],
+    doseStepsMg: [0.45, 1.6],
+    defaultDoseMg: 1.6,
+    schedule: { mode: "interval", everyDays: 2 },
+    titrating: false,
+    note: "Immune modulator. Often 1.6 mg every 2–3 days. Varies by protocol.",
+  },
+  "MOTS-c": {
+    commonVialsMg: [10],
+    doseStepsMg: [5, 10],
+    defaultDoseMg: 5,
+    schedule: { mode: "weekly", shotsPerWeek: 3 },
+    titrating: false,
+    note: "Mitochondrial peptide. 5–10 mg 2–3x weekly.",
+  },
+  "SS-31": {
+    commonVialsMg: [10, 20, 40],
+    doseStepsMg: [4],
+    defaultDoseMg: 4,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Mitochondrial peptide (Elamipretide). 4 mg daily.",
+  },
+  "Epitalon": {
+    commonVialsMg: [100, 200],
+    doseStepsMg: [5, 10],
+    defaultDoseMg: 5,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Pineal peptide. 5–10 mg daily in 10–20 day cycles.",
+  },
+  "Kisspeptin-10": {
+    commonVialsMg: [5],
+    doseStepsMg: [0.1, 0.2, 0.3],
+    defaultDoseMg: 0.1,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Hormone signaling peptide. 100–300 mcg 2–3x daily.",
+  },
+  "PT-141": {
+    commonVialsMg: [10],
+    doseStepsMg: [1, 2],
+    defaultDoseMg: 1,
+    schedule: { mode: "weekly", shotsPerWeek: 1 },
+    titrating: false,
+    note: "Bremelanotide. 1–2 mg as needed (not daily).",
+  },
+  "DSIP": {
+    commonVialsMg: [5],
+    doseStepsMg: [0.1, 0.2, 0.3],
+    defaultDoseMg: 0.1,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Delta sleep-inducing peptide. 100–300 mcg at bedtime.",
+  },
+  "GHRP-2": {
+    commonVialsMg: [5],
+    doseStepsMg: [0.1, 0.2, 0.3],
+    defaultDoseMg: 0.2,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Growth hormone releasing peptide. 100–300 mcg 1–3x daily.",
+  },
+  "GHRP-6": {
+    commonVialsMg: [5],
+    doseStepsMg: [0.1, 0.2, 0.3],
+    defaultDoseMg: 0.2,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "GHRP with strong appetite stimulation. 100–300 mcg 1–3x daily.",
+  },
+  "Hexarelin": {
+    commonVialsMg: [2],
+    doseStepsMg: [0.1, 0.2],
+    defaultDoseMg: 0.1,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Potent GHRP. 100–200 mcg 1–2x daily. Cycle to avoid desensitization.",
+  },
+  "IGF-1 LR3": {
+    commonVialsMg: [1],
+    doseStepsMg: [0.02, 0.04, 0.05, 0.1],
+    defaultDoseMg: 0.04,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Long-acting IGF-1. 20-50 mcg daily post-workout. Cycle 4-6 weeks.",
+  },
+  "Selank": {
+    commonVialsMg: [5, 10],
+    doseStepsMg: [0.25, 0.5],
+    defaultDoseMg: 0.25,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Anxiolytic nootropic peptide. 250–500 mcg 1–2x daily.",
+  },
+  "Semax": {
+    commonVialsMg: [5, 10, 30],
+    doseStepsMg: [0.4, 0.8],
+    defaultDoseMg: 0.4,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Nootropic peptide. 400–800 mcg 1–2x daily.",
+  },
+  "LL-37": {
+    commonVialsMg: [5],
+    doseStepsMg: [0.25, 0.5],
+    defaultDoseMg: 0.25,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Antimicrobial peptide (CAP-18). 250–500 mcg 1–2x daily, typically cycled.",
+  },
+  "Thymalin": {
+    commonVialsMg: [100],
+    doseStepsMg: [5, 10],
+    defaultDoseMg: 5,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Thymus peptide. 5–10 mg daily in 5–10 day cycles.",
+  },
+  "Pinealon": {
+    commonVialsMg: [100],
+    doseStepsMg: [5, 10],
+    defaultDoseMg: 5,
+    schedule: { mode: "interval", everyDays: 1 },
+    titrating: false,
+    note: "Nootropic peptide. 5–10 mg daily in 10–20 day cycles.",
+  },
+  "Follistatin 344": {
+    commonVialsMg: [1],
+    doseStepsMg: [0.1],
+    defaultDoseMg: 0.1,
+    schedule: { mode: "interval", everyDays: 5 },
+    titrating: false,
+    note: "Myostatin inhibitor. 100 mcg every 5–7 days for limited cycles.",
+  },
 };
 
 export const PEPTIDE_NAMES = Object.keys(PEPTIDE_LIBRARY);
 
-// Resolve a name (case-insensitive) against the built-in library first, then any
-// peptides fetched at runtime via AI lookup. Returns null when unknown.
-export function lookupPeptide(name, aiLibrary = {}) {
+// Resolve a name (case-insensitive) against the built-in library.
+export function lookupPeptide(name) {
   const needle = String(name || "").trim().toLowerCase();
   if (!needle) {
     return null;
@@ -57,6 +256,5 @@ export function lookupPeptide(name, aiLibrary = {}) {
   if (libKey) {
     return { name: libKey, source: "library", ...PEPTIDE_LIBRARY[libKey] };
   }
-  const aiKey = Object.keys(aiLibrary).find((entry) => entry.toLowerCase() === needle);
-  return aiKey ? { name: aiKey, source: "ai", ...aiLibrary[aiKey] } : null;
+  return null;
 }
