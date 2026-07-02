@@ -31,6 +31,16 @@ export function scheduleLabel(plan) {
 
 // Number of individual doses a phase contains at the plan's current cadence.
 export function tierDoseCount(tier, plan) {
+  if (tier.type === "off") {
+    return 0;
+  }
+  if (plan.scheduleMode === "interval") {
+    return Math.max(1, Math.round(tier.count || 1));
+  }
+  return Math.max(1, Math.round((tier.weeks || 0) * dosesPerWeek(plan)));
+}
+
+export function tierScheduleCount(tier, plan) {
   if (plan.scheduleMode === "interval") {
     return Math.max(1, Math.round(tier.count || 1));
   }
@@ -45,12 +55,18 @@ export function buildDosePlan(plan) {
   const flexibleRatio = Math.max(0.01, Math.min(1, (plan.flexibleDosePct ?? 10) / 100));
   const doses = [];
   let totalMg = 0;
+  let scheduleCursor = 0;
 
   plan.tiers.forEach((tier, tierIndex) => {
-    const count = tierDoseCount(tier, plan);
+    const count = tierScheduleCount(tier, plan);
+    if (tier.type === "off") {
+      scheduleCursor += count;
+      return;
+    }
     for (let i = 0; i < count; i += 1) {
-      doses.push({ doseMg: tier.doseMg, baseDoseMg: tier.doseMg, tierIndex });
+      doses.push({ doseMg: tier.doseMg, baseDoseMg: tier.doseMg, tierIndex, scheduleIndex: scheduleCursor });
       totalMg += tier.doseMg;
+      scheduleCursor += 1;
     }
   });
 
@@ -291,11 +307,12 @@ export function computePlan(plan, prefs) {
   const startDate = parseStartDate(plan.startDate);
   const bacUseBy = addDays(startDate, prefs.bacWindowDays);
   const vialDurationDays = Math.max(0, Math.round((Math.max(1, firstVialDoses) - 1) * interval));
-  const planDurationDays = Math.max(0, Math.round((doses.length - 1) * interval));
+  const lastScheduleIndex = Math.max(...doses.map((dose) => dose.scheduleIndex ?? 0));
+  const planDurationDays = Math.max(0, Math.round(lastScheduleIndex * interval));
 
   const shots = doses.map((dose, index) => ({
     index,
-    date: addDays(startDate, Math.round(index * interval)),
+    date: addDays(startDate, Math.round((dose.scheduleIndex ?? index) * interval)),
     doseMg: dose.doseMg,
     tierIndex: dose.tierIndex,
     bacOpened: index === 0,

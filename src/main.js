@@ -64,11 +64,17 @@ function syncTiersFromDom() {
   if (!plan) {
     return;
   }
-  plan.tiers = Array.from(document.querySelectorAll("#tierList .tier-row")).map((row) => ({
-    weeks: plan.tiers[Number(row.dataset.index)]?.weeks ?? 1,
-    count: plan.tiers[Number(row.dataset.index)]?.count ?? 1,
-    doseMg: Math.max(0.001, num(row.querySelector(".tier-dose").value, 1)),
-  }));
+  plan.tiers = Array.from(document.querySelectorAll("#tierList .tier-row")).map((row) => {
+    const previous = plan.tiers[Number(row.dataset.index)] || {};
+    const isOff = previous.type === "off";
+    const doseInput = row.querySelector(".tier-dose");
+    return {
+      type: isOff ? "off" : "dose",
+      weeks: previous.weeks ?? 1,
+      count: previous.count ?? 1,
+      doseMg: isOff ? 0 : Math.max(0.001, num(doseInput?.value, previous.doseMg || 1)),
+    };
+  });
   plan.tiers.forEach((tier, index) => {
     const input = document.querySelector(`#tierList .tier-row[data-index="${index}"] .tier-duration`);
     if (!input) {
@@ -113,9 +119,11 @@ function addPeptidePlan() {
 
 const form = document.getElementById("plannerForm");
 
-form.addEventListener("input", (event) => {
+function handleFormEdit(event) {
   const target = event.target;
-  const isTier = target.classList.contains("tier-duration") || target.classList.contains("tier-dose");
+  const isTier =
+    target.classList.contains("tier-duration") ||
+    target.classList.contains("tier-dose");
   const isPeptide = target.id === "peptideName";
   const plan = getActivePlan(store);
   const previousName = plan ? plan.peptideName : "";
@@ -142,6 +150,14 @@ form.addEventListener("input", (event) => {
 
   renderOutputs(store);
   persistence.scheduleSave();
+}
+
+form.addEventListener("input", handleFormEdit);
+
+form.addEventListener("change", (event) => {
+  if (event.target.tagName === "SELECT") {
+    handleFormEdit(event);
+  }
 });
 
 document.getElementById("tierList").addEventListener("click", (event) => {
@@ -161,8 +177,19 @@ document.getElementById("addTier").addEventListener("click", () => {
   if (!plan) {
     return;
   }
-  const last = plan.tiers[plan.tiers.length - 1] || { doseMg: 100 };
-  plan.tiers.push({ weeks: 1, count: 1, doseMg: last.doseMg });
+  const last = [...plan.tiers].reverse().find((tier) => tier.type !== "off") || { doseMg: 100 };
+  plan.tiers.push({ type: "dose", weeks: 1, count: 1, doseMg: last.doseMg || 100 });
+  renderTiers(plan);
+  renderOutputs(store);
+  persistence.scheduleSave();
+});
+
+document.getElementById("addOffTier").addEventListener("click", () => {
+  const plan = getActivePlan(store);
+  if (!plan) {
+    return;
+  }
+  plan.tiers.push({ type: "off", weeks: 1, count: 1, doseMg: 0 });
   renderTiers(plan);
   renderOutputs(store);
   persistence.scheduleSave();

@@ -69,7 +69,7 @@
       </header>
 
       <nav class="app-tabs" aria-label="Planner sections">
-        <button class="app-tab active" type="button" data-tab="reconstitution">Reconstitution</button>
+        <button class="app-tab active" type="button" data-tab="reconstitution">Reconstitution and Dosing</button>
         <button class="app-tab" type="button" data-tab="schedule">Scheduling</button>
       </nav>
 
@@ -138,17 +138,26 @@
               </label>
             </div>
 
-            <div class="section-heading compact row">
+            <div class="section-heading compact">
               <div>
                 <h2>Dose phases</h2>
                 <p>Use weeks for weekly schedules, or shot counts for every-N-days schedules.</p>
               </div>
+            </div>
+            <div class="phase-actions">
               <button class="button button--secondary small-button" id="addTier" type="button">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M5 12h14" />
                   <path d="M12 5v14" />
                 </svg>
                 Add phase
+              </button>
+              <button class="button button--secondary small-button" id="addOffTier" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14" />
+                  <path d="M12 5v14" />
+                </svg>
+                Add off phase
               </button>
             </div>
 
@@ -309,7 +318,10 @@
               </div>
             </div>
             <details class="manual-bac-details">
-              <summary>BAC water tracking</summary>
+              <summary>
+                <span class="manual-bac-summary-main">BAC water tracking</span>
+                <span class="manual-bac-summary-meta">Track extra bottles</span>
+              </summary>
               <div class="manual-bac-control">
                 <label class="field">
                   <span>Opened date</span>

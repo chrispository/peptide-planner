@@ -26,7 +26,7 @@ test("hydrate migrates legacy v1 (fields + count tiers) to hybrid tiers", () => 
   assert.equal(p.peptideName, "BPC-157");
   assert.equal(p.scheduleMode, "interval");
   // every 1 day => 7 doses/week, 14 doses => 2 weeks.
-  assert.deepEqual(p.tiers, [{ weeks: 2, count: 14, doseMg: 0.25 }]);
+  assert.deepEqual(p.tiers, [{ type: "dose", weeks: 2, count: 14, doseMg: 0.25 }]);
 });
 
 test("hydrate migrates v2 count-based tiers to hybrid tiers and keeps prefs/tab", () => {
@@ -54,8 +54,8 @@ test("hydrate migrates v2 count-based tiers to hybrid tiers and keeps prefs/tab"
   assert.equal(store.prefs.idealUnits, 50);
   assert.equal(store.prefs.bacWindowDays, 28);
   assert.deepEqual(store.plans[0].tiers, [
-    { weeks: 4, count: 4, doseMg: 2.5 },
-    { weeks: 4, count: 4, doseMg: 5 },
+    { type: "dose", weeks: 4, count: 4, doseMg: 2.5 },
+    { type: "dose", weeks: 4, count: 4, doseMg: 5 },
   ]);
 });
 
@@ -72,7 +72,7 @@ test("hydrate round-trips through serialize unchanged", () => {
   const restored = createStore();
   assert.equal(hydrate(restored, payload), true);
   assert.equal(restored.plans[0].peptideName, "Semaglutide");
-  assert.deepEqual(restored.plans[0].tiers, [{ weeks: 4, count: 4, doseMg: 0.25 }]);
+  assert.deepEqual(restored.plans[0].tiers, [{ type: "dose", weeks: 4, count: 4, doseMg: 0.25 }]);
   assert.equal(restored.prefs.idealUnits, 55);
 });
 

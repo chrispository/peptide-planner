@@ -42,17 +42,18 @@ export function createPlan(overrides = {}) {
     everyDays: 3,
     flexibleDose: false,
     flexibleDosePct: 10,
-    tiers: [{ weeks: 2.5, count: 5, doseMg: 100 }],
+    tiers: [{ type: "dose", weeks: 2.5, count: 5, doseMg: 100 }],
     ...overrides,
   };
 }
 
-// Coerce arbitrary tier input into { weeks, count, doseMg }. Older saves may
-// only have weeks or only have count; initialize the missing side from cadence.
+// Coerce arbitrary tier input into { type, weeks, count, doseMg }. Older saves
+// may only have weeks or only have count; initialize the missing side from cadence.
 function normalizeTiers(tiers, plan) {
   const list = (Array.isArray(tiers) ? tiers : [])
     .map((tier) => {
-      const doseMg = Math.max(0.001, num(tier.doseMg, 1));
+      const type = tier.type === "off" ? "off" : "dose";
+      const doseMg = type === "off" ? 0 : Math.max(0.001, num(tier.doseMg, 1));
       const hasWeeks = Number.isFinite(num(tier.weeks, NaN));
       const hasCount = Number.isFinite(num(tier.count, NaN));
       const count = hasCount
@@ -61,9 +62,9 @@ function normalizeTiers(tiers, plan) {
       const weeks = hasWeeks
         ? Math.max(0.5, num(tier.weeks))
         : Math.max(0.5, count / dosesPerWeek(plan));
-      return { weeks, count, doseMg };
+      return { type, weeks, count, doseMg };
     });
-  return list.length ? list : [{ weeks: 2.5, count: 5, doseMg: 100 }];
+  return list.length ? list : [{ type: "dose", weeks: 2.5, count: 5, doseMg: 100 }];
 }
 
 export function createStore() {

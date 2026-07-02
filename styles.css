@@ -611,6 +611,14 @@ input[type="checkbox"] {
   gap: 9px;
 }
 
+.phase-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
 .tier-row {
   display: grid;
   gap: 10px;
@@ -625,6 +633,31 @@ input[type="checkbox"] {
   grid-template-columns: 30px minmax(0, 1fr) minmax(0, 1fr) 38px;
   gap: 10px;
   align-items: end;
+}
+
+.tier-row--off {
+  border-style: dashed;
+}
+
+.tier-off-label {
+  display: grid;
+  align-content: center;
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.tier-off-label span {
+  color: var(--color-text-subtle);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.tier-off-label strong {
+  font-weight: 600;
 }
 
 .tier-caption {
@@ -1084,15 +1117,20 @@ input[type="checkbox"] {
 
 .manual-bac-details {
   margin-bottom: var(--space-4);
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
 }
 
 .manual-bac-details summary {
-  min-height: 38px;
+  min-height: 46px;
   display: flex;
+  position: relative;
   align-items: center;
-  color: var(--color-text-muted);
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 42px 0 12px;
+  color: var(--color-text);
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 12px;
@@ -1101,8 +1139,57 @@ input[type="checkbox"] {
   letter-spacing: 0.08em;
 }
 
+.manual-bac-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.manual-bac-details summary::marker {
+  content: "";
+}
+
+.manual-bac-details summary::after {
+  content: "+";
+  position: absolute;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  transition: transform 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.manual-bac-details summary:hover::after {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.manual-bac-details[open] summary::after {
+  content: "-";
+}
+
+.manual-bac-summary-main {
+  color: var(--color-text);
+}
+
+.manual-bac-summary-meta {
+  color: var(--color-text-subtle);
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .manual-bac-details[open] {
   padding-bottom: var(--space-4);
+}
+
+.manual-bac-details[open] .manual-bac-control,
+.manual-bac-details[open] .manual-bac-list {
+  margin-inline: 12px;
 }
 
 /* ---- Print: clean single-vial reconstitution card ---- */
@@ -1277,7 +1364,7 @@ input[type="checkbox"] {
     grid-template-columns: 42px minmax(0, 1fr);
   }
 
-  .tier-main .field:nth-of-type(2),
+  .tier-main .field,
   .tier-main .tier-remove {
     grid-column: 1 / -1;
   }

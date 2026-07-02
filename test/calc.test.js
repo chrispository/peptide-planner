@@ -192,6 +192,27 @@ test("computePlan dates shots from the start date at the cadence interval", () =
   assert.equal(days, 7);
 });
 
+test("off phases skip scheduled dose slots without adding medication", () => {
+  const result = computePlan(
+    plan({
+      startDate: "2026-01-01",
+      scheduleMode: "weekly",
+      shotsPerWeek: 1,
+      tiers: [
+        { type: "dose", weeks: 1, count: 1, doseMg: 100 },
+        { type: "off", weeks: 2, count: 2, doseMg: 0 },
+        { type: "dose", weeks: 1, count: 1, doseMg: 100 },
+      ],
+    }),
+    PREFS,
+  );
+
+  assert.equal(result.doses.length, 2);
+  assert.equal(result.totalMg, 200);
+  assert.equal(result.shots[0].date.toISOString().slice(0, 10), "2026-01-01");
+  assert.equal(result.shots[1].date.toISOString().slice(0, 10), "2026-01-22");
+});
+
 test("computePlan returns empty when there are no phases", () => {
   assert.deepEqual(computePlan(plan({ tiers: [] }), PREFS), { empty: true });
 });

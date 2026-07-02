@@ -21,6 +21,7 @@ import {
   computeAll,
   mergeSchedule,
   summarizeDoses,
+  tierScheduleCount,
 } from "./calc.js";
 import { lookupPeptide, PEPTIDE_NAMES } from "./peptides.js";
 import { getActivePlan } from "./state.js";
@@ -178,9 +179,18 @@ export function renderTiers(plan) {
       ? 'type="number" min="1" step="1"'
       : 'type="number" min="0.5" step="0.5"';
   plan.tiers.forEach((tier, index) => {
+    const isOff = tier.type === "off";
     const row = document.createElement("div");
-    row.className = "tier-row";
+    row.className = `tier-row${isOff ? " tier-row--off" : ""}`;
     row.dataset.index = String(index);
+    const doseCell = isOff
+      ? `<div class="tier-off-label"><span>Phase</span><strong>Off</strong></div>`
+      : `
+        <label class="field">
+          <span>mg per dose</span>
+          <input class="tier-dose" type="number" min="0.001" step="0.001" value="${tier.doseMg}" />
+        </label>
+      `;
     row.innerHTML = `
       <div class="tier-main">
         <div class="tier-index">${index + 1}</div>
@@ -188,10 +198,7 @@ export function renderTiers(plan) {
           <span>${durationLabel}</span>
           <input class="tier-duration" ${durationAttrs} value="${durationValue(tier)}" />
         </label>
-        <label class="field">
-          <span>mg per dose</span>
-          <input class="tier-dose" type="number" min="0.001" step="0.001" value="${tier.doseMg}" />
-        </label>
+        ${doseCell}
         <button class="button button--icon icon-button tier-remove" type="button" aria-label="Remove phase"${plan.tiers.length === 1 ? " disabled" : ""}>${iconX}</button>
       </div>
       <div class="tier-caption"></div>
@@ -207,6 +214,7 @@ function updateTierCaptions(plan) {
   const dpw = dosesPerWeek(plan);
   const interval = intervalDays(plan);
   const startDate = parseStartDate(plan.startDate);
+  let scheduleCursor = 0;
   let doseCursor = 0;
   let lastShotDate = null;
   el.tierList.querySelectorAll(".tier-row").forEach((row, index) => {
@@ -214,22 +222,38 @@ function updateTierCaptions(plan) {
     if (!tier) {
       return;
     }
+    const isOff = tier.type === "off";
+    row.classList.toggle("tier-row--off", isOff);
+    const scheduleCount = tierScheduleCount(tier, plan);
     const count = tierDoseCount(tier, plan);
-    const startDose = doseCursor + 1;
-    const endDose = doseCursor + count;
-    doseCursor += count;
-    lastShotDate = addDays(startDate, Math.round((endDose - 1) * interval));
-    const startWeek = Math.ceil(startDose / dpw);
-    const endWeek = Math.ceil(endDose / dpw);
+    const startSlot = scheduleCursor + 1;
+    const endSlot = scheduleCursor + scheduleCount;
+    const startDay = Math.round(scheduleCursor * interval) + 1;
+    scheduleCursor += scheduleCount;
+    const endDay = Math.round(scheduleCursor * interval);
+    const startWeek = Math.ceil(startSlot / dpw);
+    const endWeek = Math.ceil(endSlot / dpw);
     const rangeLabel =
       plan.scheduleMode === "interval"
-        ? startDose === endDose
-          ? `Shot ${startDose}`
-          : `Shots ${startDose}–${endDose}`
+        ? startDay === endDay
+          ? `Day ${startDay}`
+          : `Days ${startDay} - ${endDay}`
         : startWeek === endWeek
           ? `Week ${startWeek}`
           : `Weeks ${startWeek}–${endWeek}`;
-    const doseLabel = `${count} ${count === 1 ? "dose" : "doses"}`;
+    if (isOff) {
+      const offLabel =
+        plan.scheduleMode === "interval"
+          ? `${scheduleCount} skipped ${scheduleCount === 1 ? "dose" : "doses"}`
+          : `${formatNumber(tier.weeks, 1)} ${tier.weeks === 1 ? "week" : "weeks"} off`;
+      row.querySelector(".tier-caption").textContent = `${rangeLabel} · ${offLabel}`;
+      return;
+    }
+    const startDose = doseCursor + 1;
+    const endDose = doseCursor + count;
+    doseCursor += count;
+    lastShotDate = addDays(startDate, Math.round((endSlot - 1) * interval));
+    const doseLabel = `${count} ${count === 1 ? "Dose" : "Doses"}`;
     row.querySelector(".tier-caption").textContent =
       `${rangeLabel} · ${doseLabel} · ${mg(count * tier.doseMg)} mg total`;
   });
