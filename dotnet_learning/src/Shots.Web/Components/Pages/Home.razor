@@ -1,0 +1,954 @@
+@page "/"
+@inject PlannerRepository Repository
+@inject IJSRuntime Js
+
+<PageTitle>Peptide Dose Planner</PageTitle>
+
+<main class="app-shell">
+    <header class="topbar">
+        <div class="brand">
+            <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
+                <g fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="4">
+                    <path stroke-linecap="round" d="M39 23L25 9m19 8L31 4m3.999 14.999l5-5m-11-1l5-5M11 37l-5 5" />
+                    <path d="M28 12L12 28l-1 9l9-1l16-16z" />
+                </g>
+            </svg>
+            <div>
+                <h1>Peptide Planner</h1>
+            </div>
+        </div>
+        <div class="top-actions">
+            <span class="save-status">@SaveStatus</span>
+            <div class="settings-menu">
+                <button class="button button--icon icon-button" type="button" aria-label="Settings" aria-expanded="@SettingsOpen" @onclick="() => SettingsOpen = !SettingsOpen">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                </button>
+                <div class="settings-popover @(SettingsOpen ? "" : "hidden")">
+                    <button class="button button--secondary theme-toggle" type="button" @onclick="ToggleThemeAsync">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                        </svg>
+                        <span>@ThemeLabel</span>
+                    </button>
+                    <button class="button button--secondary theme-toggle" type="button" @onclick="ExportJsonAsync">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <path d="M7 10l5 5 5-5" />
+                            <path d="M12 15V3" />
+                        </svg>
+                        Export
+                    </button>
+                    <label class="button button--secondary theme-toggle import-label">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <path d="M17 8l-5-5-5 5" />
+                            <path d="M12 3v12" />
+                        </svg>
+                        Import
+                        <InputFile OnChange="ImportJsonAsync" class="hidden-file" accept="application/json,.json" />
+                    </label>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <nav class="app-tabs" aria-label="Planner sections">
+        <button class="app-tab @(Store.ActiveTab == "reconstitution" ? "active" : "")" type="button" @onclick='() => SetActiveTabAsync("reconstitution")'>Reconstitution and Dosing</button>
+        <button class="app-tab @(Store.ActiveTab == "schedule" ? "active" : "")" type="button" @onclick='() => SetActiveTabAsync("schedule")'>Scheduling</button>
+    </nav>
+
+    <section class="tab-panel @(Store.ActiveTab == "reconstitution" ? "active" : "")">
+        <div class="plan-bar">
+            <div class="plan-chips">
+                @foreach (var plan in Store.Plans)
+                {
+                    <div class="chip plan-chip @(plan.Id == Store.ActivePlanId ? "active chip--active" : "")">
+                        <button class="plan-chip-label" type="button" @onclick="() => SelectPlanAsync(plan.Id)">@(string.IsNullOrWhiteSpace(plan.PeptideName) ? "Choose Peptide" : plan.PeptideName)</button>
+                        @if (Store.Plans.Count > 1)
+                        {
+                            <button class="plan-chip-remove" type="button" aria-label="Remove peptide" @onclick="() => RemovePlanAsync(plan.Id)">x</button>
+                        }
+                    </div>
+                }
+            </div>
+            <button class="button button--ghost small-button add-plan" type="button" @onclick="AddPlanAsync">+ Add peptide</button>
+            <button class="button button--secondary small-button plan-bar-print" type="button" @onclick="() => PrintAsync(false)">Print card</button>
+        </div>
+
+        @if (Plan is not null)
+        {
+            var result = CurrentResult;
+            <div class="layout">
+                <form class="panel controls">
+                    <div class="section-heading">
+                        <h2>Vial</h2>
+                        <p>Choose a peptide and enter the vial amount.</p>
+                    </div>
+
+                    <div class="grid-2">
+                        <label class="field">
+                            <span>Peptide</span>
+                            <input id="peptideName" list="peptideOptions" placeholder="Choose Peptide" autocomplete="off" value="@Plan.PeptideName" @onchange="OnPeptideChangedAsync" />
+                            <datalist id="peptideOptions">
+                                <option value="@AddPeptideOption"></option>
+                                @foreach (var name in PeptideLibrary.Names.Order())
+                                {
+                                    <option value="@name"></option>
+                                }
+                            </datalist>
+                        </label>
+                        <label class="field">
+                            <span>Vial amount (mg)</span>
+                            <input type="number" min="0.01" step="0.01" @bind="Plan.VialMg" @bind:after="NormalizeAndSaveAsync" />
+                        </label>
+                    </div>
+
+                    <p class="peptide-note">@PeptideNote(Plan)</p>
+
+                    <div class="section-heading compact">
+                        <h2>Schedule</h2>
+                    </div>
+
+                    <div class="segmented" role="tablist" aria-label="Schedule type">
+                        <button class="segmented-button @(Plan.ScheduleMode == ScheduleModes.Weekly ? "active" : "")" type="button" @onclick='() => SetScheduleModeAsync(ScheduleModes.Weekly)'>Per week</button>
+                        <button class="segmented-button @(Plan.ScheduleMode == ScheduleModes.Interval ? "active" : "")" type="button" @onclick='() => SetScheduleModeAsync(ScheduleModes.Interval)'>Every N days</button>
+                    </div>
+
+                    <div class="grid-2">
+                        <label class="field">
+                            <span>Start date</span>
+                            <input type="date" value="@Plan.StartDate" @onchange="SetStartDateAsync" />
+                        </label>
+                        <label class="field schedule-field @(Plan.ScheduleMode == ScheduleModes.Weekly ? "" : "hidden")">
+                            <span>Shots per week</span>
+                            <input type="number" min="0.1" step="0.1" @bind="Plan.ShotsPerWeek" @bind:after="NormalizeAndSaveAsync" />
+                        </label>
+                        <label class="field schedule-field @(Plan.ScheduleMode == ScheduleModes.Interval ? "" : "hidden")">
+                            <span>Every N days</span>
+                            <input type="number" min="1" step="1" @bind="Plan.EveryDays" @bind:after="NormalizeAndSaveAsync" />
+                        </label>
+                    </div>
+
+                    <div class="section-heading compact">
+                        <div>
+                            <h2>Dose phases</h2>
+                            <p>Use weeks for weekly schedules, or shot counts for every-N-days schedules.</p>
+                        </div>
+                    </div>
+                    <div class="phase-actions">
+                        <button class="button button--secondary small-button" type="button" @onclick="AddTierAsync">+ Add phase</button>
+                        <button class="button button--secondary small-button" type="button" @onclick="AddOffTierAsync">+ Add off phase</button>
+                    </div>
+
+                    <div class="tier-list">
+                        @for (var i = 0; i < Plan.Tiers.Count; i++)
+                        {
+                            var index = i;
+                            var tier = Plan.Tiers[index];
+                            var isOff = tier.Type == TierTypes.Off;
+                            <div class="tier-row @(isOff ? "tier-row--off" : "")">
+                                <div class="tier-main">
+                                    <div class="tier-index">@(index + 1)</div>
+                                    @if (Plan.ScheduleMode == ScheduleModes.Interval)
+                                    {
+                                        <label class="field">
+                                            <span>Shots</span>
+                                            <input type="number" min="1" step="1" @bind="tier.Count" @bind:after="NormalizeAndSaveAsync" />
+                                        </label>
+                                    }
+                                    else
+                                    {
+                                        <label class="field">
+                                            <span>Weeks</span>
+                                            <input type="number" min="0.5" step="0.5" @bind="tier.Weeks" @bind:after="NormalizeAndSaveAsync" />
+                                        </label>
+                                    }
+                                    @if (isOff)
+                                    {
+                                        <div class="tier-off-label"><span>Phase</span><strong>Off</strong></div>
+                                    }
+                                    else
+                                    {
+                                        <label class="field">
+                                            <span>mg per dose</span>
+                                            <input type="number" min="0.001" step="0.001" @bind="tier.DoseMg" @bind:after="NormalizeAndSaveAsync" />
+                                        </label>
+                                    }
+                                    <button class="button button--icon icon-button tier-remove" type="button" aria-label="Remove phase" disabled="@(Plan.Tiers.Count == 1)" @onclick="() => RemoveTierAsync(index)">x</button>
+                                </div>
+                                <div class="tier-caption">@TierCaption(Plan, index)</div>
+                            </div>
+                        }
+                    </div>
+
+                    <label class="toggle-field">
+                        <input type="checkbox" @bind="Plan.FlexibleDose" @bind:after="SaveAsync" />
+                        <span>
+                            <strong>Flexible dose</strong>
+                            <small>Allow optional dose adjustments to finish opened vials cleanly.</small>
+                        </span>
+                        <span class="toggle-number">
+                            <small>Max Adjustment %</small>
+                            <input type="number" min="1" max="100" step="1" disabled="@(!Plan.FlexibleDose)" @bind="Plan.FlexibleDosePct" @bind:after="NormalizeAndSaveAsync" />
+                        </span>
+                    </label>
+
+                    <div class="phase-summary">
+                        <div class="phase-summary-row">
+                            <span>Last shot</span>
+                            <strong>@(result.Shots.Count > 0 ? Formatters.Date(result.LastShotDate) : "-")</strong>
+                        </div>
+                        <div class="phase-summary-row">
+                            <span>Vials</span>
+                            <strong>@(result.Empty ? "-" : VialsLabel(result.VialsNeeded))</strong>
+                        </div>
+                        <div class="phase-summary-row @(result.LastVialLeftover > 0.001 ? "" : "hidden")">
+                            <span>Left unused</span>
+                            <strong>@Mg(result.LastVialLeftover) mg</strong>
+                        </div>
+                        <div class="phase-summary-note">@CleanupMessage(Plan, result)</div>
+                    </div>
+
+                    <div class="section-heading compact">
+                        <h2>Preferences</h2>
+                        <p>Shared across every peptide.</p>
+                    </div>
+
+                    <div class="grid-2">
+                        <label class="field">
+                            <span>Preview shots</span>
+                            <input type="number" min="3" max="24" step="1" @bind="Store.Prefs.PreviewCount" @bind:after="NormalizeAndSaveAsync" />
+                        </label>
+                        <label class="field">
+                            <span>Max preferred units</span>
+                            <input type="number" min="10" max="100" step="1" @bind="Store.Prefs.MaxUnits" @bind:after="NormalizeAndSaveAsync" />
+                        </label>
+                        <label class="field">
+                            <span>Ideal units</span>
+                            <input type="number" min="5" max="100" step="1" @bind="Store.Prefs.IdealUnits" @bind:after="NormalizeAndSaveAsync" />
+                        </label>
+                    </div>
+
+                    <div class="grid-2">
+                        <label class="field">
+                            <span>BAC use window</span>
+                            <select @bind="Store.Prefs.BacWindowDays" @bind:after="NormalizeAndSaveAsync">
+                                <option value="28">28 days</option>
+                                <option value="35">35 days</option>
+                            </select>
+                        </label>
+                    </div>
+                </form>
+
+                <section class="results">
+                    <article class="hero-result">
+                        <p class="eyebrow">Recommended reconstitution</p>
+                        <div class="hero-grid">
+                            <div>
+                                <h2>@(result.Recommended is null ? "-" : $"{Formatters.Number(result.Recommended.Ml, 1)} mL")</h2>
+                                <p>@RecommendedSummary(Plan, result)</p>
+                                <p class="hero-perweek">@RecommendedPerWeek(Plan, result)</p>
+                            </div>
+                            <div class="dose-badge">
+                                <span>@(result.Recommended is null ? "-" : Formatters.Range(result.Recommended.UnitsByDose))</span>
+                                <small>units per shot</small>
+                            </div>
+                        </div>
+                    </article>
+
+                    <div class="stat-grid">
+                        <article class="stat">
+                            <span>Vial lasts</span>
+                            <strong>@(result.Empty ? "-" : $"{Formatters.Number(result.VialDurationDays, 0)} days")</strong>
+                        </article>
+                        <article class="stat">
+                            <span>Total shots</span>
+                            <strong>@(result.Empty ? "0" : Formatters.Number(result.Doses.Count, 0))</strong>
+                        </article>
+                        <article class="stat">
+                            <span>Concentration</span>
+                            <strong>@(result.Recommended is null ? "-" : $"{Formatters.Number(result.Recommended.Concentration, 1)} mg/mL")</strong>
+                        </article>
+                        <article class="stat">
+                            <span>BAC use-by</span>
+                            <strong>@(result.Empty ? "-" : Formatters.Date(result.BacUseBy))</strong>
+                        </article>
+                    </div>
+
+                    <article class="panel">
+                        <div class="section-heading row">
+                            <div>
+                                <h2>Schedule preview</h2>
+                                <p>@ScheduleSummary(Plan, result)</p>
+                            </div>
+                        </div>
+                        @RenderShotDays(BuildShotDays(result.Shots.Take(Math.Min(Store.Prefs.PreviewCount, result.Shots.Count)), false))
+                    </article>
+                </section>
+            </div>
+        }
+    </section>
+
+    <section class="tab-panel @(Store.ActiveTab == "schedule" ? "active" : "")">
+        <div class="schedule-page">
+            <div class="stat-grid">
+                <article class="stat">
+                    <span>Next shot</span>
+                    <strong>@ScheduleNext</strong>
+                </article>
+                <article class="stat">
+                    <span>Last shot</span>
+                    <strong>@ScheduleLast</strong>
+                </article>
+                <article class="stat">
+                    <span>Span</span>
+                    <strong>@ScheduleSpan</strong>
+                </article>
+                <article class="stat">
+                    <span>Soonest use-by</span>
+                    <strong>@ScheduleUseBy</strong>
+                </article>
+            </div>
+
+            <article class="panel">
+                <div class="section-heading row">
+                    <div>
+                        <h2>Full schedule</h2>
+                        <p>@ScheduleMeta</p>
+                    </div>
+                    <div class="section-actions">
+                        <button class="button button--secondary small-button" type="button" @onclick="() => PrintAsync(true)">Print schedule</button>
+                        <button class="button button--secondary small-button" type="button" @onclick="ExportIcsAsync">Add to calendar</button>
+                    </div>
+                </div>
+                <details class="manual-bac-details">
+                    <summary>
+                        <span class="manual-bac-summary-main">BAC water tracking</span>
+                        <span class="manual-bac-summary-meta">Track extra bottles</span>
+                    </summary>
+                    <div class="manual-bac-control">
+                        <label class="field">
+                            <span>Opened date</span>
+                            <input type="date" value="@ManualBacDate" @onchange="SetManualBacDate" />
+                        </label>
+                        <button class="button button--secondary small-button" type="button" @onclick="AddManualBacAsync">Add BAC</button>
+                    </div>
+                    <div class="manual-bac-list">
+                        @if (Store.Prefs.ManualBacOpenDates.Count == 0)
+                        {
+                            <p class="empty-hint">No extra BAC bottles tracked.</p>
+                        }
+                        @foreach (var date in Store.Prefs.ManualBacOpenDates)
+                        {
+                            <div class="manual-bac-item">
+                                <span>@Formatters.Date(Dates.ParseStartDate(date))</span>
+                                <button class="button button--icon icon-button manual-bac-remove" type="button" aria-label="Remove BAC opened @date" @onclick="() => RemoveManualBacAsync(date)">x</button>
+                            </div>
+                        }
+                    </div>
+                </details>
+                @RenderShotDays(BuildShotDays(MergedSchedule, true, ManualBacEvents()))
+            </article>
+
+            <article class="panel">
+                <div class="section-heading row">
+                    <div>
+                        <h2>Per-peptide summary</h2>
+                        <p>One row per active peptide plan.</p>
+                    </div>
+                </div>
+                <div class="plan-summary-list">
+                    @if (ComputedPlans.Count == 0)
+                    {
+                        <p class="empty-hint">No peptide has a valid plan yet.</p>
+                    }
+                    @foreach (var entry in ComputedPlans)
+                    {
+                        <div class="plan-summary">
+                            <div>
+                                <div class="plan-summary-name">@(string.IsNullOrWhiteSpace(entry.Plan.PeptideName) ? "Untitled" : entry.Plan.PeptideName)</div>
+                                <div class="plan-summary-meta">@PlannerCalculator.SummarizeDoses(entry.Result.Doses, Mg) · @PlannerCalculator.ScheduleLabel(entry.Plan)</div>
+                            </div>
+                            <div class="plan-summary-stat">
+                                <strong>@Mg(entry.Result.TotalMg) mg</strong>
+                                <small>@VialsLabel(entry.Result.VialsNeeded)</small>
+                            </div>
+                            <div class="plan-summary-stat">
+                                <strong>@Formatters.Number(entry.Result.Recommended!.Ml, 1) mL</strong>
+                                <small>@Formatters.Range(entry.Result.Recommended.UnitsByDose) units</small>
+                            </div>
+                            <div class="plan-summary-stat">
+                                <strong>@entry.Result.Doses.Count shots</strong>
+                                <small>ends @Formatters.Date(entry.Result.LastShotDate)</small>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </article>
+        </div>
+    </section>
+</main>
+
+@code {
+    private const string AddPeptideOption = "+ Add Peptide";
+    private PlannerStore Store { get; set; } = StateFactory.CreateStore();
+    private string SaveStatus { get; set; } = "Loading";
+    private bool SettingsOpen { get; set; }
+    private string Theme { get; set; } = "dark";
+    private string ThemeLabel => Theme == "dark" ? "Light" : "Dark";
+    private string ManualBacDate { get; set; } = Dates.DateInputValue(DateTime.Today);
+
+    private PeptidePlan? Plan => Store.ActivePlan;
+    private ComputedPlan CurrentResult => Plan is null ? new ComputedPlan { Empty = true } : PlannerCalculator.ComputePlan(Plan, Store.Prefs);
+    private List<ComputedPlanEntry> ComputedPlans => PlannerCalculator.ComputeAll(Store.Plans, Store.Prefs);
+    private List<ShotEntry> MergedSchedule => PlannerCalculator.MergeSchedule(ComputedPlans);
+
+    private string ScheduleNext
+    {
+        get
+        {
+            var merged = MergedSchedule;
+            if (merged.Count == 0)
+            {
+                return "-";
+            }
+
+            var today = Dates.StartOfToday();
+            return Formatters.Date(merged.FirstOrDefault(shot => shot.Date >= today)?.Date ?? merged[0].Date);
+        }
+    }
+
+    private string ScheduleLast => MergedSchedule.Count == 0 ? "-" : Formatters.Date(MergedSchedule[^1].Date);
+    private string ScheduleSpan => MergedSchedule.Count == 0 ? "-" : $"{Dates.DaysBetween(MergedSchedule[0].Date, MergedSchedule[^1].Date)} days";
+    private string ScheduleMeta => MergedSchedule.Count == 0 ? "All planned injections, merged in date order." : $"{MergedSchedule.Count} injections across {string.Join(", ", ComputedPlans.Select(entry => string.IsNullOrWhiteSpace(entry.Plan.PeptideName) ? "Untitled" : entry.Plan.PeptideName))}.";
+
+    private string ScheduleUseBy
+    {
+        get
+        {
+            var dates = new List<DateTime>();
+            if (MergedSchedule.Count > 0)
+            {
+                dates.Add(Dates.AddDays(MergedSchedule[0].Date, Store.Prefs.BacWindowDays));
+            }
+
+            dates.AddRange(ManualBacEvents().Where(item => item.Kind == "expires").Select(item => item.Date));
+            return dates.Count == 0 ? "-" : Formatters.Date(dates.Order().First());
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Store = await Repository.LoadCurrentAsync();
+        SaveStatus = "Loaded";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            Theme = await Js.InvokeAsync<string>("peptidePlanner.getTheme");
+            await Js.InvokeVoidAsync("peptidePlanner.setTheme", Theme);
+            StateHasChanged();
+        }
+        catch (InvalidOperationException)
+        {
+            // JS interop is unavailable during prerender.
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        Normalize();
+        SaveStatus = "Saving...";
+        await Repository.SaveCurrentAsync(Store);
+        SaveStatus = "Saved";
+    }
+
+    private Task NormalizeAndSaveAsync()
+    {
+        Normalize();
+        return SaveAsync();
+    }
+
+    private void Normalize()
+    {
+        Store.Prefs.PreviewCount = (int)StateFactory.Clamp(Store.Prefs.PreviewCount, 3, 24);
+        Store.Prefs.MaxUnits = Math.Max(1, Store.Prefs.MaxUnits);
+        Store.Prefs.IdealUnits = Math.Max(1, Store.Prefs.IdealUnits);
+        Store.Prefs.BacWindowDays = Math.Max(1, Store.Prefs.BacWindowDays);
+
+        foreach (var plan in Store.Plans)
+        {
+            plan.VialMg = Math.Max(0.01, plan.VialMg);
+            plan.ShotsPerWeek = Math.Max(0.1, plan.ShotsPerWeek);
+            plan.EveryDays = Math.Max(1, plan.EveryDays);
+            plan.FlexibleDosePct = StateFactory.Clamp(plan.FlexibleDosePct, 1, 100);
+            foreach (var tier in plan.Tiers)
+            {
+                tier.Type = tier.Type == TierTypes.Off ? TierTypes.Off : TierTypes.Dose;
+                tier.Count = Math.Max(1, tier.Count);
+                tier.Weeks = Math.Max(0.5, tier.Weeks);
+                tier.DoseMg = tier.Type == TierTypes.Off ? 0 : Math.Max(0.001, tier.DoseMg);
+            }
+        }
+    }
+
+    private async Task OnPeptideChangedAsync(ChangeEventArgs args)
+    {
+        if (Plan is null)
+        {
+            return;
+        }
+
+        var previousName = Plan.PeptideName;
+        var nextName = Convert.ToString(args.Value) ?? "";
+        if (nextName == AddPeptideOption)
+        {
+            await AddPlanAsync();
+            return;
+        }
+
+        Plan.PeptideName = nextName;
+        var info = PeptideLibrary.Lookup(Plan.PeptideName);
+        if (info is not null && !string.Equals(previousName, Plan.PeptideName, StringComparison.Ordinal))
+        {
+            Plan.ScheduleMode = info.Mode;
+            if (info.ShotsPerWeek is not null)
+            {
+                Plan.ShotsPerWeek = info.ShotsPerWeek.Value;
+            }
+            if (info.EveryDays is not null)
+            {
+                Plan.EveryDays = info.EveryDays.Value;
+            }
+        }
+
+        await SaveAsync();
+    }
+
+    private async Task AddPlanAsync()
+    {
+        var plan = StateFactory.CreatePlan(p => p.PeptideName = "");
+        Store.Plans.Add(plan);
+        Store.ActivePlanId = plan.Id;
+        SettingsOpen = false;
+        await SaveAsync();
+    }
+
+    private async Task RemovePlanAsync(string id)
+    {
+        if (Store.Plans.Count <= 1)
+        {
+            return;
+        }
+
+        Store.Plans = Store.Plans.Where(plan => plan.Id != id).ToList();
+        if (Store.Plans.All(plan => plan.Id != Store.ActivePlanId))
+        {
+            Store.ActivePlanId = Store.Plans[0].Id;
+        }
+        await SaveAsync();
+    }
+
+    private async Task SelectPlanAsync(string id)
+    {
+        Store.ActivePlanId = id;
+        await SaveAsync();
+    }
+
+    private async Task SetScheduleModeAsync(string mode)
+    {
+        if (Plan is null)
+        {
+            return;
+        }
+
+        Plan.ScheduleMode = mode;
+        await SaveAsync();
+    }
+
+    private async Task SetStartDateAsync(ChangeEventArgs args)
+    {
+        if (Plan is null)
+        {
+            return;
+        }
+
+        var value = Convert.ToString(args.Value);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            Plan.StartDate = value;
+            await SaveAsync();
+        }
+    }
+
+    private void SetManualBacDate(ChangeEventArgs args)
+    {
+        var value = Convert.ToString(args.Value);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            ManualBacDate = value;
+        }
+    }
+
+    private async Task AddTierAsync()
+    {
+        if (Plan is null)
+        {
+            return;
+        }
+
+        var lastDose = Plan.Tiers.LastOrDefault(tier => tier.Type != TierTypes.Off)?.DoseMg ?? 100;
+        Plan.Tiers.Add(new DoseTier { Type = TierTypes.Dose, Weeks = 1, Count = 1, DoseMg = lastDose });
+        await SaveAsync();
+    }
+
+    private async Task AddOffTierAsync()
+    {
+        if (Plan is null)
+        {
+            return;
+        }
+
+        Plan.Tiers.Add(new DoseTier { Type = TierTypes.Off, Weeks = 1, Count = 1, DoseMg = 0 });
+        await SaveAsync();
+    }
+
+    private async Task RemoveTierAsync(int index)
+    {
+        if (Plan is null || Plan.Tiers.Count <= 1 || index < 0 || index >= Plan.Tiers.Count)
+        {
+            return;
+        }
+
+        Plan.Tiers.RemoveAt(index);
+        await SaveAsync();
+    }
+
+    private async Task SetActiveTabAsync(string tab)
+    {
+        Store.ActiveTab = tab == "schedule" ? "schedule" : "reconstitution";
+        await SaveAsync();
+    }
+
+    private async Task AddManualBacAsync()
+    {
+        if (!DateTime.TryParse(ManualBacDate, out _))
+        {
+            return;
+        }
+
+        Store.Prefs.ManualBacOpenDates = Store.Prefs.ManualBacOpenDates.Append(ManualBacDate).Distinct().Order().ToList();
+        await SaveAsync();
+    }
+
+    private async Task RemoveManualBacAsync(string date)
+    {
+        Store.Prefs.ManualBacOpenDates = Store.Prefs.ManualBacOpenDates.Where(item => item != date).ToList();
+        await SaveAsync();
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        Theme = Theme == "dark" ? "light" : "dark";
+        SettingsOpen = false;
+        await Js.InvokeVoidAsync("peptidePlanner.setTheme", Theme);
+    }
+
+    private async Task ExportJsonAsync()
+    {
+        SettingsOpen = false;
+        await Js.InvokeVoidAsync(
+            "peptidePlanner.downloadFile",
+            $"peptide-planner-{Dates.DateInputValue(DateTime.Today)}.json",
+            StateFactory.Serialize(Store),
+            "application/json");
+    }
+
+    private async Task ImportJsonAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        try
+        {
+            await using var stream = file.OpenReadStream(1_000_000);
+            using var reader = new StreamReader(stream);
+            var json = await reader.ReadToEndAsync();
+            var imported = StateFactory.CreateStore();
+            if (!StateFactory.Hydrate(imported, json))
+            {
+                throw new InvalidOperationException("not a recognized backup");
+            }
+
+            Store = imported;
+            SettingsOpen = false;
+            SaveStatus = "Imported";
+            await SaveAsync();
+        }
+        catch (Exception error)
+        {
+            SaveStatus = $"Import failed: {error.Message}";
+        }
+    }
+
+    private async Task ExportIcsAsync()
+    {
+        var merged = MergedSchedule;
+        if (merged.Count == 0)
+        {
+            SaveStatus = "No injections to export";
+            return;
+        }
+
+        await Js.InvokeVoidAsync(
+            "peptidePlanner.downloadFile",
+            $"peptide-schedule-{Dates.DateInputValue(DateTime.Today)}.ics",
+            CalendarExporter.BuildIcs(merged),
+            "text/calendar");
+    }
+
+    private Task PrintAsync(bool schedule)
+    {
+        return Js.InvokeVoidAsync("peptidePlanner.printPage", schedule).AsTask();
+    }
+
+    private static string PeptideNote(PeptidePlan plan)
+    {
+        var info = PeptideLibrary.Lookup(plan.PeptideName);
+        if (info is not null)
+        {
+            return info.Note;
+        }
+
+        return string.IsNullOrWhiteSpace(plan.PeptideName)
+            ? "Custom peptide - enter your own dose phases below."
+            : "Not in the library - enter dose phases below.";
+    }
+
+    private static string TierCaption(PeptidePlan plan, int index)
+    {
+        var interval = PlannerCalculator.IntervalDays(plan);
+        var startDate = Dates.ParseStartDate(plan.StartDate);
+        var scheduleCursor = 0;
+        var doseCursor = 0;
+
+        for (var i = 0; i <= index && i < plan.Tiers.Count; i++)
+        {
+            var tier = plan.Tiers[i];
+            var scheduleCount = PlannerCalculator.TierScheduleCount(tier, plan);
+            var doseCount = PlannerCalculator.TierDoseCount(tier, plan);
+            if (i != index)
+            {
+                scheduleCursor += scheduleCount;
+                doseCursor += doseCount;
+                continue;
+            }
+
+            var startDay = (int)Math.Round(scheduleCursor * interval) + 1;
+            scheduleCursor += scheduleCount;
+            var endDay = (int)Math.Round(scheduleCursor * interval);
+            if (tier.Type == TierTypes.Off)
+            {
+                var offLabel = plan.ScheduleMode == ScheduleModes.Interval
+                    ? $"{scheduleCount} skipped {(scheduleCount == 1 ? "dose" : "doses")}"
+                    : $"{Formatters.Number(tier.Weeks, 1)} {(Math.Abs(tier.Weeks - 1) < 0.001 ? "week" : "weeks")} off";
+                return startDay == endDay ? $"Day {startDay} · {offLabel}" : $"Days {startDay} - {endDay} · {offLabel}";
+            }
+
+            var startDose = doseCursor + 1;
+            var endDose = doseCursor + doseCount;
+            var lastShotDate = Dates.AddDays(startDate, Math.Round((scheduleCursor - 1) * interval));
+            var range = startDay == endDay ? $"Day {startDay}" : $"Days {startDay} - {endDay}";
+            return $"{range} · {doseCount} {(doseCount == 1 ? "Dose" : "Doses")} · {Mg(doseCount * tier.DoseMg)} mg total · ends {Formatters.Date(lastShotDate)}";
+        }
+
+        return "";
+    }
+
+    private static string RecommendedSummary(PeptidePlan plan, ComputedPlan result)
+    {
+        if (result.Empty)
+        {
+            return "Add at least one dose phase to build a plan.";
+        }
+
+        if (result.Recommended is null)
+        {
+            return "No water amount keeps this plan within a 100-unit syringe. Lower the dose or raise the vial amount.";
+        }
+
+        return $"Add {Formatters.Number(result.Recommended.Ml, 1)} mL BAC water to {(string.IsNullOrWhiteSpace(plan.PeptideName) ? "the vial" : plan.PeptideName)} for {PlannerCalculator.SummarizeDoses(result.Doses, Mg)}.";
+    }
+
+    private static string RecommendedPerWeek(PeptidePlan plan, ComputedPlan result)
+    {
+        if (result.Recommended is null || result.Doses.Count == 0)
+        {
+            return "";
+        }
+
+        var dpw = PlannerCalculator.DosesPerWeek(plan);
+        var distinctDoses = result.Doses.Select(dose => dose.DoseMg).Distinct().Order().ToList();
+        var mgPerWeek = distinctDoses.Select(dose => dose * dpw);
+        var unitsPerWeek = distinctDoses.Select(dose => dose / result.Recommended.Concentration * 100 * dpw);
+        return $"~ {Formatters.Range(mgPerWeek, 3)} mg / week · {Formatters.Range(unitsPerWeek, 0)} units / week ({Formatters.Number(dpw, 1)}x weekly)";
+    }
+
+    private static string ScheduleSummary(PeptidePlan plan, ComputedPlan result)
+    {
+        if (result.Empty)
+        {
+            return "No schedule to preview yet.";
+        }
+
+        if (result.Recommended is null)
+        {
+            return "No schedule fits a 100-unit syringe yet.";
+        }
+
+        var planWeeks = result.PlanDurationDays / 7.0;
+        var vialsLabel = VialsLabel(result.VialsNeeded);
+        return $"{PlannerCalculator.ScheduleLabel(plan)}; {result.Doses.Count} shots over ~{Formatters.Number(planWeeks, 0)} weeks. Needs {vialsLabel} ({Mg(result.TotalMg)} mg total).";
+    }
+
+    private static string CleanupMessage(PeptidePlan plan, ComputedPlan result)
+    {
+        if (plan.FlexibleDose && result.CleanupSuggestions.Count > 0)
+        {
+            var suggestion = result.CleanupSuggestions[0];
+            var shotRange = suggestion.ShotStartIndex == suggestion.ShotEndIndex
+                ? $"shot {suggestion.ShotStartIndex + 1}"
+                : $"shots {suggestion.ShotStartIndex + 1}-{suggestion.ShotEndIndex + 1}";
+            var more = result.CleanupSuggestions.Count > 1 ? $" {result.CleanupSuggestions.Count - 1} more vial cleanup adjustments applied." : "";
+            return $"Cleaned vial {suggestion.VialNumber}: increased {shotRange} by {Formatters.Number(suggestion.AdjustmentPct, 1)}% (+{Mg(suggestion.AddedMg)} mg total).{more}";
+        }
+
+        return plan.FlexibleDose
+            ? $"No cleanup adjustment found within {Formatters.Number(plan.FlexibleDosePct, 0)}%."
+            : "Flexible dose is off; vial cleanup suggestions are hidden.";
+    }
+
+    private static string VialsLabel(int count) => count == 1 ? "1 vial" : $"{count} vials";
+
+    private static string Mg(double value) => Formatters.Number(value, 3);
+
+    private List<ScheduleEvent> ManualBacEvents()
+    {
+        var computedHasShots = ComputedPlans.Any(entry => entry.Result.Shots.Count > 0);
+        var startNumber = computedHasShots ? 2 : 1;
+        return Store.Prefs.ManualBacOpenDates.SelectMany((date, index) =>
+        {
+            var opened = Dates.ParseStartDate(date);
+            var bacNumber = startNumber + index;
+            return new[]
+            {
+                new ScheduleEvent(opened, "bac", "opened", $"BAC Water {bacNumber} Opened", ""),
+                new ScheduleEvent(Dates.AddDays(opened, Store.Prefs.BacWindowDays), "bac", "expires", $"BAC Water {bacNumber} Expiring", "")
+            };
+        }).ToList();
+    }
+
+    private static List<ScheduleDay> BuildShotDays(IEnumerable<ShotEntry> shots, bool showTag, IEnumerable<ScheduleEvent>? events = null)
+    {
+        var days = new Dictionary<string, ScheduleDay>();
+        void Add(DateTime date, ScheduleItem item)
+        {
+            var key = Dates.DateInputValue(date);
+            if (!days.TryGetValue(key, out var day))
+            {
+                day = new ScheduleDay(date);
+                days[key] = day;
+            }
+
+            day.Items.Add(item);
+        }
+
+        foreach (var item in events ?? [])
+        {
+            Add(item.Date, new ScheduleItem("event", item.Tone, item.Label, item.Value, 0, null));
+        }
+
+        foreach (var shot in shots)
+        {
+            if (!showTag && shot.BacOpened && shot.BacExpires is not null)
+            {
+                Add(shot.Date, new ScheduleItem("event", "bac", "BAC Water 1 Opened", "", 0, null));
+                Add(shot.BacExpires.Value, new ScheduleItem("event", "bac", "BAC Water 1 Expiring", "", 0, null));
+            }
+            if (shot.OpensVial)
+            {
+                var peptide = string.IsNullOrWhiteSpace(shot.PeptideName) ? "" : $"{shot.PeptideName} ";
+                Add(shot.Date, new ScheduleItem("event", "open", $"Open {peptide}vial {shot.VialNumber}", "", 0, null));
+            }
+
+            var meta = showTag
+                ? $"{(string.IsNullOrWhiteSpace(shot.PeptideName) ? "Untitled" : shot.PeptideName)} · {Mg(shot.DoseMg)} mg"
+                : $"{Mg(shot.DoseMg)} mg · phase {shot.TierIndex + 1}";
+            Add(shot.Date, new ScheduleItem("shot", "", meta, "", shot.Index, shot.Units));
+
+            if (shot.EndsVial is not null)
+            {
+                var peptide = string.IsNullOrWhiteSpace(shot.PeptideName) ? "" : $"{shot.PeptideName} ";
+                Add(shot.Date, new ScheduleItem("event", "end", $"End {peptide}vial {shot.EndsVial.VialNumber}", $"{Mg(shot.EndsVial.UnusedMg)} mg unused", 0, null));
+            }
+        }
+
+        return days.Values.OrderBy(day => day.Date).ToList();
+    }
+
+    private RenderFragment RenderShotDays(List<ScheduleDay> days, bool showTag = false) => @<div class="schedule-list">
+        @if (days.Count == 0)
+        {
+            <p class="empty-hint">No scheduled injections yet.</p>
+        }
+        @foreach (var day in days)
+        {
+            <div class="schedule-day">
+                <div class="shot-date">@Formatters.Date(day.Date)</div>
+                <div class="schedule-day-items">
+                    @foreach (var item in day.Items)
+                    {
+                        if (item.Type == "shot")
+                        {
+                            <div class="schedule-shot @(showTag ? "schedule-shot--named" : "")">
+                                @if (!showTag)
+                                {
+                                    <span class="shot-number">@(item.Index + 1)</span>
+                                }
+                                <div class="shot-meta">@item.Label</div>
+                                <span class="pill">@(item.Units is null ? "-" : $"{Formatters.Number(item.Units.Value, 1)} units")</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="schedule-event @item.Tone">
+                                <span>@item.Label</span>
+                                @if (!string.IsNullOrWhiteSpace(item.Value))
+                                {
+                                    <strong>@item.Value</strong>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>;
+
+    private sealed record ScheduleEvent(DateTime Date, string Tone, string Kind, string Label, string Value);
+
+    private sealed record ScheduleDay(DateTime Date)
+    {
+        public List<ScheduleItem> Items { get; } = [];
+    }
+
+    private sealed record ScheduleItem(string Type, string Tone, string Label, string Value, int Index, double? Units);
+}
