@@ -189,7 +189,7 @@ export function renderTiers(plan) {
       : `
         <label class="tier-flex">
           <input class="tier-flexible" type="checkbox"${tier.flexibleDose ? " checked" : ""} />
-          <span>Cleanup</span>
+          <span>Flexible</span>
           ${
             tier.flexibleDose
               ? `
@@ -415,6 +415,17 @@ function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } =
       meta,
       units: shot.units,
     });
+    if (shot.cleanupDose) {
+      addDayItem(shot.date, {
+        type: "note",
+        text: "Flexible dose to finish vial cleanly.",
+      });
+    } else if (Math.abs(shot.flexibleAddedMg ?? 0) > 0.001) {
+      addDayItem(shot.date, {
+        type: "note",
+        text: "Adjusted within flexible cleanup range.",
+      });
+    }
     if (shot.endsVial) {
       const peptide = shot.peptideName ? `${shot.peptideName} ` : "";
       addDayItem(shot.date, {
@@ -441,6 +452,9 @@ function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } =
                 <span class="pill">${item.units != null ? `${formatNumber(item.units, 1)} units` : "-"}</span>
               </div>
             `;
+          }
+          if (item.type === "note") {
+            return `<div class="schedule-note">${escapeHtml(item.text)}</div>`;
           }
           return `
             <div class="schedule-event ${item.tone}">
@@ -476,6 +490,12 @@ function renderRecon(store, plan) {
   const r = result.recommended;
   const phaseRecommendations = result.phaseRecommendations || [];
   const hasMultiplePhaseRecommendations = phaseRecommendations.length > 1;
+  const sharedPhaseMl =
+    hasMultiplePhaseRecommendations &&
+    phaseRecommendations.every((recommendation) => Math.abs(recommendation.ml - phaseRecommendations[0].ml) < 0.001)
+      ? phaseRecommendations[0].ml
+      : null;
+  const hasDistinctPhaseRecommendations = hasMultiplePhaseRecommendations && sharedPhaseMl == null;
   const planWeeks = result.planDurationDays / 7;
   const vialEndsBeforeBac = result.vialDurationDays <= prefs.bacWindowDays;
   const vialsLabel = result.vialsNeeded === 1 ? "1 vial" : `${result.vialsNeeded} vials`;
@@ -507,9 +527,9 @@ function renderRecon(store, plan) {
   const unitsPerWeek = doseGroups.map((group) => group.units * group.dpw);
   const cadenceLabel = scheduleLabel(plan) === "mixed cadence" ? "mixed cadence" : scheduleLabel(plan);
 
-  el.recommendedMl.closest(".hero-ml").classList.toggle("hidden", hasMultiplePhaseRecommendations);
-  el.recommendedPhaseList.classList.toggle("hidden", !hasMultiplePhaseRecommendations);
-  el.recommendedPhaseList.innerHTML = hasMultiplePhaseRecommendations
+  el.recommendedMl.closest(".hero-ml").classList.toggle("hidden", hasDistinctPhaseRecommendations);
+  el.recommendedPhaseList.classList.toggle("hidden", !hasDistinctPhaseRecommendations);
+  el.recommendedPhaseList.innerHTML = hasDistinctPhaseRecommendations
     ? `
         ${phaseRecommendations
           .map(
@@ -524,20 +544,23 @@ function renderRecon(store, plan) {
         ${r.overridden ? `<button id="resetMlPhaseBtn" class="hero-ml-reset phase-recon-reset" type="button">Auto</button>` : ""}
       `
     : "";
-  el.recommendedMl.disabled = hasMultiplePhaseRecommendations;
+  el.recommendedMl.disabled = hasDistinctPhaseRecommendations;
   // Don't stomp what the user is mid-way through typing into the field.
   if (document.activeElement !== el.recommendedMl) {
-    el.recommendedMl.value = r.overridden ? String(r.ml) : formatNumber(r.ml, 1);
+    const displayMl = sharedPhaseMl ?? r.ml;
+    el.recommendedMl.value = r.overridden ? String(displayMl) : formatNumber(displayMl, 1);
   }
   el.resetMlBtn.classList.toggle("hidden", !r.overridden);
   const unitsByPhase = phaseRecommendations.flatMap((recommendation) => recommendation.unitsByDose);
   const maxUnits = Math.max(...(unitsByPhase.length ? unitsByPhase : r.unitsByDose));
   const overMax = maxUnits > 100 ? " Warning: this exceeds a 100-unit syringe." : "";
   el.recommendedUnits.textContent = formatRange(unitsByPhase.length ? unitsByPhase : r.unitsByDose);
-  el.recommendedSummary.textContent = hasMultiplePhaseRecommendations
+  el.recommendedSummary.textContent = hasDistinctPhaseRecommendations
     ? overMax.trim()
-    : `Add ${formatNumber(phaseRecommendations[0]?.ml ?? r.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"}.${overMax}`;
-  el.recommendedSummary.classList.toggle("hidden", hasMultiplePhaseRecommendations && !overMax);
+    : `Add ${formatNumber(sharedPhaseMl ?? phaseRecommendations[0]?.ml ?? r.ml, 1)} mL BAC water to ${
+        plan.peptideName || "the vial"
+      }${sharedPhaseMl == null ? "" : " for all phases"}.${overMax}`;
+  el.recommendedSummary.classList.toggle("hidden", hasDistinctPhaseRecommendations && !overMax);
   el.recommendedPerWeek.textContent =
     `≈ ${formatRange(mgPerWeek, 3)} mg / week · ${formatRange(unitsPerWeek, 0)} units / week (${cadenceLabel})`;
   el.vialLasts.textContent = `${formatNumber(result.vialDurationDays, 0)} days`;
@@ -552,13 +575,15 @@ function renderRecon(store, plan) {
   const hasFlexiblePhases = plan.tiers.some((tier) => tier.flexibleDose);
   if (hasFlexiblePhases && result.cleanupSuggestions.length > 0) {
     const suggestion = result.cleanupSuggestions[0];
-    const more = result.cleanupSuggestions.length > 1 ? ` ${result.cleanupSuggestions.length - 1} more vial cleanup adjustment${result.cleanupSuggestions.length === 2 ? "" : "s"} applied.` : "";
+    const more = result.cleanupSuggestions.length > 1 ? ` ${result.cleanupSuggestions.length - 1} more vial cleanup change${result.cleanupSuggestions.length === 2 ? "" : "s"} applied.` : "";
     const shotRange =
       suggestion.shotStartIndex === suggestion.shotEndIndex
         ? `shot ${suggestion.shotStartIndex + 1}`
         : `shots ${suggestion.shotStartIndex + 1}-${suggestion.shotEndIndex + 1}`;
     el.phaseSuggestion.textContent =
-      `Cleaned vial ${suggestion.vialNumber}: increased ${shotRange} by ${formatNumber(suggestion.adjustmentPct, 1)}% (+${mg(suggestion.addedMg)} mg total).${more}`;
+      suggestion.method === "added-dose"
+        ? `Cleaned vial ${suggestion.vialNumber}: added ${mg(suggestion.addedMg)} mg as cleanup ${shotRange}.${more}`
+        : `Cleaned vial ${suggestion.vialNumber}: increased ${shotRange} by ${formatNumber(suggestion.adjustmentPct, 1)}% (+${mg(suggestion.addedMg)} mg total).${more}`;
     el.phaseSuggestion.classList.remove("hidden");
   } else {
     el.phaseSuggestion.textContent = hasFlexiblePhases

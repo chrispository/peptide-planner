@@ -64,6 +64,16 @@ data/shots.sqlite
 Use the gear menu to import/export JSON backups. The schedule page can export an
 `.ics` calendar file, and the reconstitution page can print a vial card.
 
+## Flexible Cleanup
+
+When flexible dosing is enabled for a phase, vial cleanup uses a hybrid rule.
+The planner first tries to spread leftover vial contents across the existing
+shots from that vial, staying inside the phase's configured flex percentage. If
+that would require too large an increase, it then checks whether the leftover
+amount is itself a valid flexible dose for the phase. When it is, the planner
+adds that amount as a cleanup shot before opening the next vial; otherwise the
+amount remains marked as unused.
+
 ## Database Schema
 
 Fresh databases use one app-owned table plus SQLite `user_version = 1`.

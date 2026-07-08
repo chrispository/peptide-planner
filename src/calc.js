@@ -103,10 +103,53 @@ export function buildDosePlan(plan) {
   let vialStartIndex = 0;
   const cleanupSuggestions = [];
 
-  function closeVial(vialNumber, startIndex, endIndex, unusedMg) {
+  function shiftFollowingDoses(startIndex, dayDelta) {
+    for (let index = startIndex; index < doses.length; index += 1) {
+      doses[index].dayOffset += dayDelta;
+    }
+  }
+
+  function canAddCleanupDose(dose, unusedMg) {
+    if (!dose?.flexibleDose || unusedMg <= 0.001) {
+      return false;
+    }
+    const baseDoseMg = dose.baseDoseMg ?? dose.doseMg;
+    const ratio = dose.flexibleRatio ?? 0;
+    return unusedMg >= baseDoseMg * (1 - ratio) - 1e-9 && unusedMg <= baseDoseMg * (1 + ratio) + 1e-9;
+  }
+
+  function addCleanupDose(vialNumber, lastDose, unusedMg, insertIndex) {
+    const baseDoseMg = lastDose.baseDoseMg ?? lastDose.doseMg;
+    const interval = tierIntervalDays(plan.tiers[lastDose.tierIndex] || {});
+    const cleanupDose = {
+      doseMg: unusedMg,
+      baseDoseMg,
+      tierIndex: lastDose.tierIndex,
+      dayOffset: lastDose.dayOffset + interval,
+      flexibleDose: true,
+      flexibleRatio: lastDose.flexibleRatio,
+      flexibleAddedMg: unusedMg - baseDoseMg,
+      cleanupDose: true,
+    };
+
+    shiftFollowingDoses(insertIndex, interval);
+    doses.splice(insertIndex, 0, cleanupDose);
+    totalMg += unusedMg;
+    cleanupSuggestions.push({
+      method: "added-dose",
+      vialNumber,
+      shotStartIndex: insertIndex,
+      shotEndIndex: insertIndex,
+      adjustmentPct: ((unusedMg - baseDoseMg) / baseDoseMg) * 100,
+      addedMg: unusedMg,
+      applied: true,
+    });
+  }
+
+  function closeVial(vialNumber, startIndex, endIndex, unusedMg, insertIndex = endIndex + 1) {
     const lastDose = doses[endIndex];
     if (!lastDose) {
-      return;
+      return 0;
     }
     let finalUnusedMg = unusedMg;
     const vialDoses = doses.slice(startIndex, endIndex + 1);
@@ -133,25 +176,22 @@ export function buildDosePlan(plan) {
         vialNumber,
         shotStartIndex: startIndex,
         shotEndIndex: endIndex,
+        method: "adjust-existing",
         adjustmentPct: adjustmentRatio * 100,
         addedMg: unusedMg,
         applied: true,
       });
+    } else if (canAddCleanupDose(lastDose, unusedMg)) {
+      addCleanupDose(vialNumber, lastDose, unusedMg, insertIndex);
+      return 1;
     }
 
     lastDose.endsVial = { vialNumber, unusedMg: finalUnusedMg };
     unusedAcrossOpenedVials += finalUnusedMg;
+    return 0;
   }
 
-  doses.forEach((dose, index) => {
-    if (dose.doseMg > vialRemaining + 1e-6) {
-      if (index > 0) {
-        closeVial(currentVial, vialStartIndex, index - 1, Math.max(0, vialRemaining));
-      }
-      currentVial += 1;
-      vialStartIndex = index;
-      vialRemaining = vialMg;
-    }
+  function assignDoseToCurrentVial(dose, index) {
     dose.vialNumber = currentVial;
     dose.opensVial = index === 0 || doses[index - 1]?.endsVial != null;
     vialRemaining -= dose.doseMg;
@@ -159,10 +199,36 @@ export function buildDosePlan(plan) {
     if (currentVial === 1) {
       firstVialDoses += 1;
     }
-  });
+  }
+
+  for (let index = 0; index < doses.length; index += 1) {
+    let dose = doses[index];
+    if (dose.doseMg > vialRemaining + 1e-6) {
+      if (index > 0) {
+        const inserted = closeVial(currentVial, vialStartIndex, index - 1, Math.max(0, vialRemaining), index);
+        if (inserted > 0) {
+          dose = doses[index];
+          assignDoseToCurrentVial(dose, index);
+          continue;
+        }
+      }
+      currentVial += 1;
+      vialStartIndex = index;
+      vialRemaining = vialMg;
+    }
+    assignDoseToCurrentVial(dose, index);
+  }
+
+  for (let index = doses.length; doses.length > 0; index += 1) {
+    const inserted = closeVial(currentVial, vialStartIndex, doses.length - 1, Math.max(0, vialRemaining), doses.length);
+    if (inserted === 0) {
+      break;
+    }
+    const dose = doses[index];
+    assignDoseToCurrentVial(dose, index);
+  }
 
   if (doses.length > 0) {
-    closeVial(currentVial, vialStartIndex, doses.length - 1, Math.max(0, vialRemaining));
     vialsNeeded = currentVial;
   }
 
@@ -292,7 +358,7 @@ function applyWholeUnitCleanup(doses, cleanupSuggestions, vialMg, recommended) {
   }
 
   for (const suggestion of cleanupSuggestions) {
-    if (!suggestion.applied) {
+    if (!suggestion.applied || suggestion.method === "added-dose") {
       continue;
     }
     const vialDoses = doses.slice(suggestion.shotStartIndex, suggestion.shotEndIndex + 1);
@@ -410,6 +476,9 @@ export function computePlan(plan, prefs) {
     opensVial: dose.opensVial,
     endsVial: dose.endsVial,
     vialRemainingAfter: dose.vialRemainingAfter,
+    cleanupDose: Boolean(dose.cleanupDose),
+    flexibleAddedMg: dose.flexibleAddedMg,
+    baseDoseMg: dose.baseDoseMg,
     units: phaseRecommendationByTier.has(dose.tierIndex)
       ? (dose.doseMg / phaseRecommendationByTier.get(dose.tierIndex).concentration) * 100
       : recommended
