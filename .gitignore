@@ -64,3 +64,6 @@ data/*.db
 data/*.db-*
 data/*.sqlite
 data/*.sqlite-*
+
+# Local .NET learning scratch (not part of the app)
+dotnet_learning/

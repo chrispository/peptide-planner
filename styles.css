@@ -835,16 +835,6 @@ input[type="checkbox"] {
   display: none;
 }
 
-.cartridge-note {
-  margin-top: var(--space-3) !important;
-  color: var(--color-text-subtle) !important;
-  font-size: 12.5px !important;
-}
-
-.cartridge-note:empty {
-  display: none;
-}
-
 .dose-badge {
   display: grid;
   place-items: center;

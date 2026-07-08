@@ -13,6 +13,9 @@ const dataDir = process.env.SHOTS_DATA_DIR
   : path.join(rootDir, "data");
 const dbPath = path.join(dataDir, "shots.sqlite");
 const port = Number(process.env.PORT || 4173);
+// HOST controls which interface the server binds to. Defaults to loopback for
+// local use; set HOST=0.0.0.0 to expose it (e.g. inside a container on a homelab).
+const host = process.env.HOST || "127.0.0.1";
 
 // Load a local .env (gitignored) if present. No-op when the file is missing.
 try {
@@ -214,8 +217,8 @@ async function main() {
     }
   });
 
-  server.listen(port, () => {
-    console.log(`Peptide planner running at http://127.0.0.1:${port}/`);
+  server.listen(port, host, () => {
+    console.log(`Peptide planner running at http://${host}:${port}/`);
     console.log(`SQLite database: ${dbPath}`);
   });
 }

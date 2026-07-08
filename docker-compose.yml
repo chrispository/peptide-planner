@@ -1,0 +1,15 @@
+services:
+  shots:
+    build: .
+    container_name: shots
+    restart: unless-stopped
+    ports:
+      # host:container — change the left side to expose a different port on your LAN.
+      - "4173:4173"
+    volumes:
+      # Persists data/shots.sqlite across container rebuilds.
+      - ./data:/data
+    environment:
+      - HOST=0.0.0.0
+      - PORT=4173
+      - SHOTS_DATA_DIR=/data

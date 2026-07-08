@@ -1,8 +1,15 @@
 # Peptide Dose Planner
 
+![Reconstitution and dosing view](docs/screenshot-dosing.png)
+
+![Scheduling view](docs/screenshot-schedule.png)
+
 Local peptide reconstitution and scheduling planner. Choose a peptide, enter vial
 amounts and dose phases, then calculate BAC water volume, syringe units, vial
 duration, and a combined injection schedule.
+
+It is a single Node process with no external dependencies (built-in HTTP + SQLite)
+and a plain HTML/CSS/JS frontend, so it self-hosts cleanly on a homelab.
 
 This is a planning utility, not medical advice. Verify dosing, concentration,
 route, storage, and beyond-use dates with a qualified clinician or pharmacist.
@@ -18,9 +25,33 @@ npm start
 Open `http://127.0.0.1:4173/`. Optional local overrides can go in `.env`:
 
 ```sh
+HOST=127.0.0.1        # set to 0.0.0.0 to expose on your LAN
 PORT=4173
 SHOTS_DATA_DIR=./data
 ```
+
+## Self-hosting (Docker)
+
+The image has no build step and no dependencies to install. The SQLite database
+is kept on a mounted volume so your data survives rebuilds.
+
+```sh
+docker compose up -d
+```
+
+This binds the app to `0.0.0.0:4173` inside the container and publishes it on
+port `4173` of the host, storing the database in `./data` on the host. Point a
+reverse proxy (Caddy, Traefik, nginx) at it if you want TLS or a hostname.
+
+Without Compose:
+
+```sh
+docker build -t shots .
+docker run -d --name shots -p 4173:4173 -v "$(pwd)/data:/data" shots
+```
+
+Back up by copying `data/shots.sqlite`, or use the in-app gear menu to export a
+JSON snapshot.
 
 ## Data
 

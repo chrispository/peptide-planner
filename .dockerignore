@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env.example
+data
+dotnet_learning
+test
+node_modules
+README.md
+Dockerfile
+docker-compose.yml
+.dockerignore
