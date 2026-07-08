@@ -9,6 +9,7 @@ import {
   computePlan,
   computeAll,
   mergeSchedule,
+  analyzeCartridge,
   summarizeDoses,
 } from "../src/calc.js";
 
@@ -179,6 +180,67 @@ test("computePlan prefers whole-number syringe units", () => {
 
   assert.equal(result.recommended.ml, 3);
   assert.equal(result.recommended.unitsByDose[0], 25);
+});
+
+test("analyzeCartridge estimates 3 mL cartridge use inside the BAC window", () => {
+  const prefs = { ...PREFS, bacWindowDays: 28 };
+  const tirzepatide = (doseMg) =>
+    computePlan(
+      plan({
+        peptideName: "Tirzepatide",
+        vialMg: 30,
+        scheduleMode: "weekly",
+        shotsPerWeek: 1,
+        tiers: [{ weeks: 4, count: 4, doseMg }],
+      }),
+      prefs,
+    );
+
+  const starter = analyzeCartridge(tirzepatide(2.5), prefs.bacWindowDays);
+  assert.equal(Math.round(starter.mlUsedWithinWindow * 10) / 10, 1);
+  assert.equal(starter.fillMlWithinWindow, 1);
+  assert.equal(starter.estimatedFullCartridgeDays, 84);
+  assert.equal(starter.fullCartridgeWithinWindow, false);
+
+  const nextDose = analyzeCartridge(tirzepatide(5), prefs.bacWindowDays);
+  assert.equal(Math.round(nextDose.mlUsedWithinWindow * 10) / 10, 2);
+  assert.equal(nextDose.estimatedFullCartridgeDays, 42);
+  assert.equal(nextDose.fullCartridgeWithinWindow, false);
+
+  const higherDose = analyzeCartridge(tirzepatide(7.5), prefs.bacWindowDays);
+  assert.equal(Math.round(higherDose.mlUsedWithinWindow * 10) / 10, 2);
+  assert.equal(higherDose.estimatedFullCartridgeDays, 42);
+  assert.equal(higherDose.fullCartridgeWithinWindow, false);
+});
+
+test("analyzeCartridge summarizes cartridge use by phase", () => {
+  const prefs = { ...PREFS, bacWindowDays: 28 };
+  const result = computePlan(
+    plan({
+      peptideName: "Tirzepatide",
+      vialMg: 30,
+      scheduleMode: "weekly",
+      shotsPerWeek: 1,
+      tiers: [
+        { weeks: 4, count: 4, doseMg: 2.5 },
+        { weeks: 4, count: 4, doseMg: 7.5 },
+      ],
+    }),
+    prefs,
+  );
+
+  const cartridge = analyzeCartridge(result, prefs.bacWindowDays);
+  assert.deepEqual(
+    cartridge.phaseSummaries.map((summary) => ({
+      phaseNumber: summary.phaseNumber,
+      mlWithinWindow: Math.round(summary.mlWithinWindow * 10) / 10,
+      fullCartridgeWithinWindow: summary.fullCartridgeWithinWindow,
+    })),
+    [
+      { phaseNumber: 1, mlWithinWindow: 1, fullCartridgeWithinWindow: false },
+      { phaseNumber: 2, mlWithinWindow: 3, fullCartridgeWithinWindow: true },
+    ],
+  );
 });
 
 test("computePlan dates shots from the start date at the cadence interval", () => {

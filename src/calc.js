@@ -360,6 +360,62 @@ export function summarizeDoses(doses, formatMg) {
   return groups.map((g) => `${g.count}x ${formatMg(g.doseMg)} mg`).join(", ");
 }
 
+export function analyzeCartridge(result, bacWindowDays, cartridgeMl = 3) {
+  if (!result || result.empty || !result.doses?.length || cartridgeMl <= 0 || bacWindowDays <= 0) {
+    return null;
+  }
+
+  const cartridgeFillMl = Math.min(result.recommended?.ml || cartridgeMl, cartridgeMl);
+  const concentration = result.vialMg / cartridgeFillMl;
+  const doseVolumes = result.doses.map((dose) => dose.doseMg / concentration);
+  const unitsByDose = doseVolumes.map((ml) => ml * 100);
+  const mlUsedWithinWindow = result.doses.reduce((total, dose, index) => {
+    const elapsedDays = Math.round((dose.scheduleIndex ?? index) * result.interval);
+    return elapsedDays <= bacWindowDays ? total + doseVolumes[index] : total;
+  }, 0);
+  const fillMlWithinWindow = Math.min(cartridgeMl, mlUsedWithinWindow);
+  const estimatedFullCartridgeDays =
+    mlUsedWithinWindow > 0 ? Math.ceil((cartridgeMl / mlUsedWithinWindow) * bacWindowDays) : null;
+  const phaseSummaries = (result.plan?.tiers || [])
+    .map((tier, tierIndex) => {
+      const phaseDoses = result.doses.filter((dose) => dose.tierIndex === tierIndex);
+      if (tier.type === "off" || phaseDoses.length === 0) {
+        return null;
+      }
+      const firstScheduleIndex = phaseDoses[0].scheduleIndex ?? 0;
+      const rawMlWithinWindow = phaseDoses.reduce((total, dose) => {
+        const elapsedDays = Math.round(((dose.scheduleIndex ?? firstScheduleIndex) - firstScheduleIndex) * result.interval);
+        return elapsedDays <= bacWindowDays ? total + dose.doseMg / concentration : total;
+      }, 0);
+      const mlWithinWindow = Math.min(cartridgeMl, rawMlWithinWindow);
+      return {
+        phaseNumber: tierIndex + 1,
+        doseMg: tier.doseMg,
+        shotsWithinWindow: phaseDoses.filter((dose) => {
+          const elapsedDays = Math.round(((dose.scheduleIndex ?? firstScheduleIndex) - firstScheduleIndex) * result.interval);
+          return elapsedDays <= bacWindowDays;
+        }).length,
+        mlWithinWindow,
+        rawMlWithinWindow,
+        fullCartridgeWithinWindow: rawMlWithinWindow >= cartridgeMl - 1e-9,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    cartridgeMl,
+    cartridgeFillMl,
+    concentration,
+    doseVolumes,
+    unitsByDose,
+    mlUsedWithinWindow,
+    fillMlWithinWindow,
+    estimatedFullCartridgeDays,
+    fullCartridgeWithinWindow: mlUsedWithinWindow >= cartridgeMl - 1e-9,
+    phaseSummaries,
+  };
+}
+
 // Compute every plan, dropping the ones with nothing valid to show. Used by both
 // the per-plan view and the combined schedule.
 export function computeAll(plans, prefs) {

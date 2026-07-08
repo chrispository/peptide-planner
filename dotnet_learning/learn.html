@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C# &amp; .NET, explained through YOUR app</title>
+<style>
+  :root {
+    --bg: #0f1216;
+    --panel: #171b22;
+    --panel-2: #1e232c;
+    --line: #2a303b;
+    --text: #e6e9ef;
+    --muted: #97a1b0;
+    --accent: #7c9cff;
+    --accent-2: #59d499;
+    --warn: #ffcf6b;
+    --pink: #ff8fb1;
+    --kw: #ff8fb1;      /* keywords */
+    --type: #7ee3c7;    /* types */
+    --str: #ffcf6b;     /* strings */
+    --num: #c3a6ff;     /* numbers */
+    --com: #6b7688;     /* comments */
+    --fn: #7c9cff;      /* method names */
+    --radius: 14px;
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); line-height: 1.6; font-size: 16px;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .layout { display: grid; grid-template-columns: 260px 1fr; }
+  /* Sidebar */
+  nav.side {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    background: var(--panel); border-right: 1px solid var(--line);
+    padding: 22px 14px; font-size: 14px;
+  }
+  nav.side h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: .3px; }
+  nav.side .sub { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+  nav.side a { display: block; color: var(--muted); padding: 7px 12px; border-radius: 8px; margin: 2px 0; }
+  nav.side a:hover { background: var(--panel-2); color: var(--text); text-decoration: none; }
+  nav.side a.active { background: rgba(124,156,255,.14); color: var(--accent); font-weight: 600; }
+  nav.side .grp { text-transform: uppercase; font-size: 10px; letter-spacing: 1.2px; color: #59627a; margin: 16px 10px 4px; }
+
+  main { padding: 46px 48px 120px; max-width: 900px; }
+  section { margin-bottom: 72px; scroll-margin-top: 24px; }
+  section > h2 {
+    font-size: 30px; margin: 0 0 6px; line-height: 1.15;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .lead { color: var(--muted); font-size: 17px; margin: 0 0 24px; }
+  h3 { font-size: 20px; margin: 32px 0 10px; }
+  p { margin: 12px 0; }
+
+  .hero {
+    background: linear-gradient(135deg, rgba(124,156,255,.14), rgba(89,212,153,.08));
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 30px 32px; margin-bottom: 44px;
+  }
+  .hero h2 { font-size: 34px; margin: 0 0 10px; }
+  .hero p { font-size: 17px; color: var(--text); }
+  .pill { display: inline-block; background: var(--panel-2); border: 1px solid var(--line);
+    color: var(--muted); font-size: 12px; padding: 3px 10px; border-radius: 20px; margin: 2px 4px 2px 0; }
+
+  /* Code blocks */
+  pre {
+    background: #0b0e13; border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; overflow-x: auto; font-family: var(--mono);
+    font-size: 13.5px; line-height: 1.7; margin: 16px 0;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; color: var(--type); border: 1px solid var(--line); }
+  .kw { color: var(--kw); } .type { color: var(--type); } .str { color: var(--str); }
+  .num { color: var(--num); } .com { color: var(--com); font-style: italic; } .fn { color: var(--fn); }
+  .filename { color: var(--com); font-size: 12px; font-family: var(--mono); margin: 22px 0 -8px; display: block; }
+
+  /* Callout: In YOUR app */
+  .yourapp {
+    border: 1px solid rgba(89,212,153,.4); background: rgba(89,212,153,.06);
+    border-radius: 12px; padding: 4px 18px; margin: 20px 0;
+  }
+  .yourapp .tag { color: var(--accent-2); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .note { border-left: 3px solid var(--accent); background: var(--panel); padding: 2px 18px; border-radius: 0 10px 10px 0; margin: 18px 0; }
+  /* Plain-English "what this code is saying" callout */
+  .plain {
+    background: rgba(124,156,255,.08); border: 1px dashed rgba(124,156,255,.5);
+    border-radius: 10px; padding: 12px 16px 12px 44px; margin: 14px 0; position: relative;
+    font-size: 15px;
+  }
+  .plain::before {
+    content: "💬"; position: absolute; left: 14px; top: 11px; font-size: 17px;
+  }
+  .plain .pe { color: var(--accent); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 2px; }
+  .plain em { color: var(--type); font-style: normal; }
+  .code-breakdown {
+    background: rgba(255,255,255,.025); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; margin: 14px 0;
+  }
+  .code-breakdown h4 { margin: 0 0 8px; color: var(--warn); font-size: 15px; }
+  .code-breakdown p { margin: 8px 0; }
+  .code-breakdown ul { margin: 8px 0 12px 20px; padding: 0; }
+  .code-breakdown li { margin: 5px 0; }
+  .code-breakdown .line-read {
+    color: var(--muted); font-size: 14px; border-top: 1px solid var(--line);
+    padding-top: 9px; margin-top: 10px;
+  }
+  .warnbox { border-left: 3px solid var(--warn); background: rgba(255,207,107,.06); padding: 2px 18px; border-radius: 0 10px 10px 0; margin: 18px 0; }
+
+  /* Definition cards grid */
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 20px 0; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px;
+  }
+  .card h4 { margin: 0 0 6px; font-size: 16px; color: var(--accent); }
+  .card .lbl { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  /* Analogy toggle */
+  .toggle-row { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+  .toggle-row button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 20px; padding: 8px 16px; cursor: pointer; font-size: 14px; font-family: var(--sans);
+  }
+  .toggle-row button.active { background: var(--accent); color: #0b0e13; border-color: var(--accent); font-weight: 600; }
+  .analogy-panel { display: none; }
+  .analogy-panel.show { display: block; }
+
+  table { border-collapse: collapse; width: 100%; margin: 18px 0; font-size: 14.5px; }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--panel-2); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) td { background: rgba(255,255,255,.015); }
+
+  /* Collapsible */
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 4px 18px; margin: 14px 0; }
+  details summary { cursor: pointer; font-weight: 600; padding: 12px 0; color: var(--accent); list-style: none; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "▸ "; color: var(--muted); }
+  details[open] summary::before { content: "▾ "; }
+
+  /* Quiz */
+  .quiz-q { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; margin: 16px 0; }
+  .quiz-q .qtext { font-weight: 600; margin-bottom: 12px; }
+  .quiz-q .opt {
+    display: block; width: 100%; text-align: left; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 11px 14px; margin: 7px 0; cursor: pointer;
+    font-size: 14.5px; font-family: var(--sans); transition: .15s;
+  }
+  .quiz-q .opt:hover { border-color: var(--accent); }
+  .quiz-q .opt.correct { background: rgba(89,212,153,.18); border-color: var(--accent-2); }
+  .quiz-q .opt.wrong { background: rgba(255,143,177,.15); border-color: var(--pink); }
+  .quiz-q .explain { margin-top: 12px; font-size: 14px; color: var(--muted); display: none; padding: 12px 14px; background: var(--panel-2); border-radius: 8px; }
+  .quiz-q .explain.show { display: block; }
+  .quiz-q .cat { float: right; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #59627a; border: 1px solid var(--line); padding: 2px 8px; border-radius: 20px; }
+  .quiz-q .hintbtn { background: none; border: 1px dashed var(--line); color: var(--muted); font-size: 12.5px; padding: 5px 12px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-family: var(--sans); }
+  .quiz-q .hintbtn:hover { border-color: var(--warn); color: var(--warn); }
+  .quiz-q .hint { display: none; margin-top: 10px; font-size: 13.5px; color: var(--warn); background: rgba(255,207,107,.07); border-radius: 8px; padding: 10px 14px; }
+  .quiz-q .hint.show { display: block; }
+  #score { font-size: 18px; font-weight: 700; margin-top: 20px; color: var(--accent-2); }
+  .quiz-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 18px 0 6px; }
+  .quiz-controls button {
+    background: var(--accent); color: #0b0e13; border: none; border-radius: 10px;
+    padding: 11px 20px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: var(--sans);
+  }
+  .quiz-controls button:hover { filter: brightness(1.08); }
+  .quiz-controls .prog { color: var(--muted); font-size: 14px; }
+  .live-score { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 10px 0; border-bottom: 1px solid var(--line); font-weight: 700; color: var(--accent-2); }
+
+  /* Mock-interview drills */
+  .drill { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; margin: 16px 0; }
+  .drill .q { font-size: 17px; font-weight: 700; }
+  .drill .q .n { color: var(--accent); margin-right: 8px; }
+  .drill .prompt { color: var(--muted); font-size: 14px; margin: 6px 0 14px; font-style: italic; }
+  .drill .reveal {
+    background: var(--accent-2); color: #0b0e13; border: none; border-radius: 9px;
+    padding: 10px 18px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: var(--sans);
+  }
+  .drill .reveal:hover { filter: brightness(1.06); }
+  .drill .answer { display: none; margin-top: 16px; }
+  .drill .answer.show { display: block; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .drill .answer .sayit { background: rgba(89,212,153,.08); border-left: 3px solid var(--accent-2); padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 0 0 14px; }
+  .drill .answer .sayit .lbl { color: var(--accent-2); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+  .drill .answer ul { margin: 10px 0; padding-left: 20px; }
+  .drill .answer li { margin: 5px 0; }
+  .drill .followup { margin-top: 14px; font-size: 13.5px; color: var(--warn); background: rgba(255,207,107,.06); border-radius: 8px; padding: 10px 14px; }
+  .drill .followup b { color: var(--warn); }
+
+  .kbd { font-family: var(--mono); background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 7px; font-size: 12px; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+    main { padding: 28px 20px 80px; }
+    .cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="side">
+    <h1>C# &amp; .NET</h1>
+    <div class="sub">taught through <em>your</em> peptide planner</div>
+    <div class="grp">Start here</div>
+    <a href="#big-picture">1. The big picture</a>
+    <a href="#the-confusion">2. Object vs Method vs Function ★</a>
+    <a href="#anatomy">3. Anatomy of a class</a>
+    <div class="grp">Building blocks</div>
+    <a href="#static">4. static vs instance</a>
+    <a href="#properties">5. Properties { get; set; }</a>
+    <a href="#methods">6. Methods in depth</a>
+    <a href="#records">7. record vs class</a>
+    <a href="#null">8. Nullable &amp; null-safety</a>
+    <a href="#linq">9. Collections &amp; LINQ</a>
+    <div class="grp">How it runs</div>
+    <a href="#async">10. async / await / Task</a>
+    <a href="#di">11. Dependency Injection</a>
+    <a href="#api">12. The API &amp; a request's journey</a>
+    <a href="#trouble">13. Trouble spots, nailed ★</a>
+    <div class="grp">Practice</div>
+    <a href="#drills">Mock interview drills 🎤</a>
+    <a href="#glossary">Cheat-sheet</a>
+    <a href="#quiz">Quiz yourself</a>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <h2>You already wrote C#. Now let's understand it.</h2>
+      <p>Every example on this page is a real line from <strong>your</strong> peptide planner
+      (<code>dotnet_learning/</code>). We converted your React app to C# and .NET — so instead of learning
+      abstract theory, you'll recognize the code and finally see <em>why</em> it's shaped the way it is.</p>
+      <div style="margin-top:14px">
+        <span class="pill">.NET 9</span>
+        <span class="pill">C# 13</span>
+        <span class="pill">Blazor Server</span>
+        <span class="pill">Minimal API</span>
+        <span class="pill">SQLite</span>
+        <span class="pill">Builds: 0 warnings ✓</span>
+      </div>
+    </div>
+
+    <!-- 1 -->
+    <section id="big-picture">
+      <h2>1. The big picture</h2>
+      <p class="lead">What "C#" and ".NET" actually are, and how your project is laid out.</p>
+
+      <div class="cards">
+        <div class="card"><h4>C#</h4><p>The <em>language</em> — the syntax you type. Like JavaScript is a language.</p></div>
+        <div class="card"><h4>.NET</h4><p>The <em>platform</em> — the runtime that executes your compiled code + a huge standard library (like Node.js + npm's std lib rolled together).</p></div>
+        <div class="card"><h4>Compiled</h4><p>Unlike JS, C# is <em>compiled</em> first: <code>dotnet build</code> turns your <code>.cs</code> files into a <code>.dll</code> the runtime runs. Errors are caught <em>before</em> the app starts.</p></div>
+        <div class="card"><h4>Strongly typed</h4><p>Every value has a declared type (<code>int</code>, <code>string</code>, <code>PeptidePlan</code>). The compiler rejects mismatches — this is the safety net React/JS didn't give you for free.</p></div>
+      </div>
+
+      <h3>How your solution is organized</h3>
+      <p>A <strong>solution</strong> (<code>.sln</code>) is a bag of <strong>projects</strong>. Each project (<code>.csproj</code>) compiles to one <code>.dll</code>. Yours has three:</p>
+      <pre><span class="com">Shots.sln</span>                       <span class="com">← the solution (glue)</span>
+├─ src/<span class="type">Shots.Domain</span>          <span class="com">← pure logic: no web, no database. Just math + models.</span>
+│     PeptidePlan, DoseTier, PlannerCalculator…
+├─ src/<span class="type">Shots.Web</span>             <span class="com">← the ASP.NET app: API endpoints, Blazor UI, SQLite</span>
+│     Program.cs, Api/, Services/, Components/
+└─ tests/<span class="type">Shots.Domain.Tests</span>  <span class="com">← unit tests for the Domain project</span></pre>
+      <div class="note">
+        <p><strong>Why split them?</strong> <code>Shots.Domain</code> knows nothing about the web or database — you
+        could reuse it in a console app or a phone app. This separation ("domain logic" vs "delivery mechanism")
+        is exactly the kind of design decision interviewers love to hear you explain.</p>
+      </div>
+
+      <h3>Two words you'll see on every file: <code>namespace</code> and <code>using</code></h3>
+      <pre><span class="filename">src/Shots.Domain/Models.cs</span>
+<span class="kw">using</span> System.Text.Json.Serialization;   <span class="com">// import — "I want to use things from this box"</span>
+
+<span class="kw">namespace</span> Shots.Domain;               <span class="com">// this file's stuff lives in the "Shots.Domain" box</span></pre>
+      <p>A <code>namespace</code> is just a folder-like label that groups related types so names don't collide.
+      <code>using X;</code> at the top means "let me refer to things in box <code>X</code> by their short name." That's it.</p>
+    </section>
+
+    <!-- 2  THE BIG ONE -->
+    <section id="the-confusion">
+      <h2>2. Object vs Class vs Method vs Function ★</h2>
+      <p class="lead">This is the one that trips everyone up. Let's kill the confusion for good.</p>
+
+      <p>Here's the single sentence to memorize:</p>
+      <div class="hero" style="margin:18px 0">
+        <p style="font-size:19px;margin:0">A <strong style="color:var(--type)">class</strong> is a <em>blueprint</em>.
+        An <strong style="color:var(--accent-2)">object</strong> is a <em>real thing built from that blueprint</em>.
+        A <strong style="color:var(--fn)">method</strong> is a <em>function that belongs to a class/object</em>.
+        A <strong style="color:var(--warn)">function</strong> is just "a reusable block of code that takes inputs and gives an output."</p>
+      </div>
+
+      <div class="warnbox">
+        <p><strong>First — clearing up "plan" vs "PeptidePlan", since they appear all over §2–4:</strong></p>
+        <table style="margin:10px 0">
+          <tr><th>You'll see…</th><th>What it is</th></tr>
+          <tr><td><code>PeptidePlan</code> (Capitalized)</td><td>the <strong style="color:var(--type)">class</strong> — the blueprint.</td></tr>
+          <tr><td><code>plan</code> (lowercase)</td><td>an <strong style="color:var(--accent-2)">object</strong> — one specific plan built from that class.</td></tr>
+          <tr><td><code>plan.Tiers.Add(…)</code></td><td>a <strong style="color:var(--fn)">method</strong> — an action you call on that object.</td></tr>
+        </table>
+        <p>That capitalization is a real, reliable C# convention, not just my styling: <strong>types (classes) are
+        PascalCase</strong> (<code>PeptidePlan</code>, <code>DoseTier</code>), and <strong>variables holding objects are
+        camelCase</strong> (<code>plan</code>, <code>tier</code>). So the moment you see a lowercase name with a dot
+        after it, you're looking at an <em>object</em> — a real thing you can poke — not a blueprint. <code>plan</code>
+        is literally what you'd get from <code>var plan = new PeptidePlan();</code>.</p>
+      </div>
+
+      <p>Pick an analogy that clicks for you:</p>
+      <div class="toggle-row">
+        <button class="active" onclick="showAnalogy(this,'a-cookie')">🍪 Cookie cutter</button>
+        <button onclick="showAnalogy(this,'a-form')">📋 Blank form</button>
+        <button onclick="showAnalogy(this,'a-react')">⚛️ React (what you know)</button>
+      </div>
+
+      <div id="a-cookie" class="analogy-panel show">
+        <table>
+          <tr><th>Term</th><th>Cookie analogy</th><th>In your app</th></tr>
+          <tr><td><strong style="color:var(--type)">class</strong></td><td>The cookie <em>cutter</em> — the shape/template. There's one cutter.</td><td><code>class PeptidePlan</code> — defines what <em>any</em> plan looks like.</td></tr>
+          <tr><td><strong style="color:var(--accent-2)">object</strong> (a.k.a. <em>instance</em>)</td><td>An actual <em>cookie</em> you stamped out. You can make many, each different (sprinkles, size).</td><td>The specific plan "NAD+, 500mg, starts July 6" sitting in your list.</td></tr>
+          <tr><td><strong style="color:var(--fn)">method</strong></td><td>Something a cookie can <em>do</em> to itself — "frost me."</td><td><code>plan.Tiers.Add(tier)</code> — a method that adds a tier to <em>that</em> plan.</td></tr>
+          <tr><td><strong style="color:var(--warn)">function</strong></td><td>A standalone recipe step — "given flour+sugar, return dough." Not tied to one cookie.</td><td><code>PlannerCalculator.IntervalDays(plan)</code> — give it a plan, get back a number.</td></tr>
+        </table>
+      </div>
+      <div id="a-form" class="analogy-panel">
+        <table>
+          <tr><th>Term</th><th>Form analogy</th></tr>
+          <tr><td><strong style="color:var(--type)">class</strong></td><td>A <em>blank</em> tax form with labeled fields (Name, Dose, StartDate).</td></tr>
+          <tr><td><strong style="color:var(--accent-2)">object</strong></td><td>A <em>filled-in</em> copy of that form — one per person.</td></tr>
+          <tr><td><strong style="color:var(--fn)">method</strong></td><td>An action attached to the form: "recalculate my total."</td></tr>
+          <tr><td><strong style="color:var(--warn)">function</strong></td><td>A calculator on the desk — hand it numbers, it returns a result. Not part of any one form.</td></tr>
+        </table>
+      </div>
+      <div id="a-react" class="analogy-panel">
+        <p>You already used these ideas in React — just with different words:</p>
+        <table>
+          <tr><th>C# term</th><th>Closest React/JS thing you knew</th></tr>
+          <tr><td><strong style="color:var(--type)">class</strong> <code>PeptidePlan</code></td><td>A component definition, or a <code>type Plan = {…}</code> / a class.</td></tr>
+          <tr><td><strong style="color:var(--accent-2)">object</strong></td><td>A specific props/state object: <code>{ peptideName: "NAD+", vialMg: 500 }</code>.</td></tr>
+          <tr><td><strong style="color:var(--fn)">method</strong></td><td>A function defined <em>inside</em> a class, called as <code>obj.doThing()</code> — like an array's <code>.map()</code>.</td></tr>
+          <tr><td><strong style="color:var(--warn)">function</strong></td><td>A plain <code>function foo(x){…}</code> or a helper in a <code>utils.js</code>.</td></tr>
+        </table>
+      </div>
+
+      <h3>See all four in one real snippet</h3>
+      <pre><span class="filename">src/Shots.Domain/Models.cs  +  a caller</span>
+<span class="com">// 1) CLASS — the blueprint. Note: it defines a shape, it is not itself "a plan".</span>
+<span class="kw">public sealed class</span> <span class="type">DoseTier</span>
+{
+    <span class="kw">public string</span> Type { <span class="kw">get</span>; <span class="kw">set</span>; } = TierTypes.Dose;
+    <span class="kw">public double</span> DoseMg { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="num">100</span>;
+}
+
+<span class="com">// 2) OBJECT — `new DoseTier{…}` builds one real instance from the blueprint.</span>
+<span class="kw">var</span> tier = <span class="kw">new</span> <span class="type">DoseTier</span> { DoseMg = <span class="num">150</span> };
+
+<span class="com">// 3) METHOD — `.Add(...)` belongs to the List object `plan.Tiers`. Called WITH the dot.</span>
+plan.Tiers.<span class="fn">Add</span>(tier);
+
+<span class="com">// 4) FUNCTION — a static helper. Give it inputs, get an output. No object needed.</span>
+<span class="com">//    (`plan` here is an OBJECT — assume `var plan = new PeptidePlan();` earlier.)</span>
+<span class="kw">double</span> days = <span class="type">PlannerCalculator</span>.<span class="fn">IntervalDays</span>(plan);</pre>
+      <div class="plain"><span class="pe">In plain English</span>
+      "Stamp out a new tier and set its dose to 150. Attach that tier onto this plan. Then, separately, ask the
+      calculator toolbox: <em>given this plan, how many days between shots?</em> — and remember the number."</div>
+
+      <div class="note">
+        <p><strong>The honest truth:</strong> in C#, "method" and "function" mean almost the same thing — a named block
+        of code that takes inputs and returns an output. C# people just say <em>method</em> because in C# <u>every</u>
+        function must live inside a class. When someone says "function," they usually mean a method that doesn't need
+        an object to run (a <code>static</code> one — more in §4). Don't overthink the distinction; interviewers won't grill you on it.</p>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section id="anatomy">
+      <h2>3. Anatomy of a class</h2>
+      <p class="lead">Let's dissect one of yours line by line.</p>
+      <pre><span class="filename">src/Shots.Domain/Models.cs</span>
+<span class="kw">public</span>  <span class="kw">sealed</span>  <span class="kw">class</span>  <span class="type">DoseTier</span>
+<span class="com">  ▲        ▲       ▲       ▲</span>
+<span class="com">  │        │       │       └─ name of the blueprint</span>
+<span class="com">  │        │       └───────── keyword: "this is a class"</span>
+<span class="com">  │        └───────────────── "sealed" = nobody can inherit from / extend this class</span>
+<span class="com">  └────────────────────────── "public" = other projects/files can use it (vs private/internal)</span>
+{
+    <span class="com">// Each line below is a PROPERTY: a named piece of data the object holds.</span>
+    <span class="kw">public string</span> Type   { <span class="kw">get</span>; <span class="kw">set</span>; } = TierTypes.Dose;  <span class="com">// text,   default "dose"</span>
+    <span class="kw">public double</span> Weeks  { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="num">2.5</span>;              <span class="com">// decimal, default 2.5</span>
+    <span class="kw">public int</span>    Count  { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="num">5</span>;                <span class="com">// whole #, default 5</span>
+    <span class="kw">public double</span> DoseMg { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="num">100</span>;              <span class="com">// decimal, default 100</span>
+}</pre>
+
+      <h3>Common types you'll see</h3>
+      <table>
+        <tr><th>Type</th><th>Holds</th><th>Example in your app</th></tr>
+        <tr><td><code>string</code></td><td>Text</td><td><code>PeptideName = "NAD+"</code></td></tr>
+        <tr><td><code>int</code></td><td>Whole numbers</td><td><code>EveryDays = 3</code></td></tr>
+        <tr><td><code>double</code></td><td>Decimals</td><td><code>VialMg = 500</code></td></tr>
+        <tr><td><code>bool</code></td><td>true / false</td><td><code>FlexibleDose = false</code></td></tr>
+        <tr><td><code>DateTime</code></td><td>A date + time</td><td><code>BacExpires</code></td></tr>
+        <tr><td><code>List&lt;DoseTier&gt;</code></td><td>A growable array of DoseTiers</td><td><code>Tiers = [new()]</code></td></tr>
+      </table>
+      <p><code>List&lt;T&gt;</code> is C#'s array-that-can-grow — the <code>&lt;T&gt;</code> ("generic") says <em>what's inside</em>.
+      <code>List&lt;DoseTier&gt;</code> = "a list where every item is a DoseTier." It's the JS array <code>DoseTier[]</code>, but the type of the contents is enforced.</p>
+    </section>
+
+    <!-- 4 -->
+    <section id="static">
+      <h2>4. <code>static</code> vs instance — the distinction that unlocks everything</h2>
+      <p class="lead">This one word decides whether you need an object or not.</p>
+      <div class="cards">
+        <div class="card">
+          <h4>Instance member</h4>
+          <p class="lbl">belongs to a specific object</p>
+          <p>You must <code>new</code> one up first, then call it <em>on that object</em>. Each object has its own data.</p>
+          <pre style="margin:8px 0"><span class="kw">var</span> tier = <span class="kw">new</span> <span class="type">DoseTier</span>();
+tier.DoseMg = <span class="num">150</span>;   <span class="com">// this tier's dose</span></pre>
+        </div>
+        <div class="card">
+          <h4><code>static</code> member</h4>
+          <p class="lbl">belongs to the class itself</p>
+          <p>No object needed. Call it straight on the type name. Great for stateless helpers &amp; constants.</p>
+          <pre style="margin:8px 0"><span class="type">PlannerCalculator</span>.<span class="fn">IntervalDays</span>(plan);
+<span class="com">// PlannerCalculator = class (static).</span>
+<span class="com">// plan = an object we pass in.</span>
+<span class="com">// never "new PlannerCalculator()"</span></pre>
+        </div>
+      </div>
+
+      <div class="yourapp">
+        <p><span class="tag">In your app</span></p>
+        <p>Your whole <code>PlannerCalculator</code> is a <code>static class</code> — it's pure math with no data to remember,
+        so it never needs to be instantiated. Compare:</p>
+        <pre><span class="kw">public</span> <span class="kw">static</span> <span class="kw">class</span> <span class="type">PlannerCalculator</span>   <span class="com">// ← static class = "just a toolbox of functions"</span>
+{
+    <span class="kw">public</span> <span class="kw">static</span> <span class="kw">double</span> <span class="fn">IntervalDays</span>(<span class="type">PeptidePlan</span> plan)  <span class="com">// call as PlannerCalculator.IntervalDays(...)</span>
+    {
+        <span class="kw">return</span> plan.ScheduleMode == ScheduleModes.Interval
+            ? <span class="type">Math</span>.<span class="fn">Max</span>(<span class="num">1</span>, plan.EveryDays)
+            : <span class="num">7</span> / <span class="type">Math</span>.<span class="fn">Max</span>(<span class="num">0.1</span>, plan.ShotsPerWeek);
+    }
+}</pre>
+        <div class="plain"><span class="pe">In plain English</span>
+        "This is a toolbox, not a thing you own — you never build one. Ask it: <em>for this plan, how many days between
+        shots?</em> If the plan uses interval mode, use its EveryDays (but never less than 1). Otherwise, split 7 days
+        across the shots-per-week."</div>
+        <p style="margin-top:8px">Meanwhile <code>PeptidePlan</code> is a normal (non-static) class, because every plan carries its
+        <em>own</em> peptide name, dose, dates — data that must live in an object.</p>
+      </div>
+      <p><strong>Rule of thumb:</strong> Does this thing need to <em>remember data unique to it</em>? → instance class.
+      Is it just a reusable calculation or constant? → <code>static</code>.</p>
+    </section>
+
+    <!-- 5 -->
+    <section id="properties">
+      <h2>5. Properties: the <code>{ get; set; }</code> mystery</h2>
+      <p class="lead">Why not just write <code>public double DoseMg;</code>? Here's the deal.</p>
+      <p>A <strong>property</strong> looks like a field (a variable) but is secretly a pair of tiny methods: a
+      <code>get</code> (the code that runs when you <em>read</em> it) and a <code>set</code> (the code that runs when
+      you <em>write</em> it). <code>{ get; set; }</code> is C# saying "generate the obvious read/write for me." You
+      use it like a plain variable, and the hidden methods fire automatically:</p>
+      <pre>plan.DoseMg = <span class="num">150</span>;        <span class="com">// you're WRITING → the `set` runs (the value 150 arrives as `value`)</span>
+<span class="kw">double</span> d = plan.DoseMg;   <span class="com">// you're READING → the `get` runs and hands back the stored value</span></pre>
+
+      <h3>What <code>get</code> and <code>set</code> literally are</h3>
+      <p>When you write the short form <code>{ get; set; }</code>, the compiler secretly writes this longer version
+      for you — a hidden storage slot ("backing field") plus two methods:</p>
+      <pre><span class="com">// This short line…</span>
+<span class="kw">public double</span> DoseMg { <span class="kw">get</span>; <span class="kw">set</span>; }
+
+<span class="com">// …is shorthand for roughly THIS:</span>
+<span class="kw">private double</span> _doseMg;                       <span class="com">// hidden variable that actually holds the value</span>
+<span class="kw">public double</span> DoseMg
+{
+    <span class="kw">get</span> { <span class="kw">return</span> _doseMg; }               <span class="com">// runs when someone READS DoseMg</span>
+    <span class="kw">set</span> { _doseMg = <span class="kw">value</span>; }             <span class="com">// runs when someone WRITES DoseMg</span>
+}</pre>
+      <div class="plain"><span class="pe">In plain English</span>
+      "Keep the real number hidden in a private box called <em>_doseMg</em>. When anyone asks to read <em>DoseMg</em>,
+      hand them what's in the box. When anyone assigns to <em>DoseMg</em>, drop the new value (<em>value</em>) into the box."</div>
+      <div class="note"><p>Inside a <code>set</code>, the special keyword <code>value</code> is "the thing on the
+      right-hand side of the <code>=</code>." So in <code>plan.DoseMg = 150;</code>, <code>value</code> is
+      <code>150</code>. You never declare <code>value</code> — C# hands it to you automatically.</p></div>
+
+      <h3>Why properties instead of plain variables?</h3>
+      <p>Because a property is really methods in disguise, you can add logic <em>later</em> without changing any code
+      that uses it. Say you want doses to never go negative — you just teach the <code>set</code> to guard, and every
+      existing <code>plan.DoseMg = …</code> in the app is instantly protected:</p>
+      <pre><span class="kw">private double</span> _doseMg;
+<span class="kw">public double</span> DoseMg
+{
+    <span class="kw">get</span> =&gt; _doseMg;
+    <span class="kw">set</span> =&gt; _doseMg = <span class="type">Math</span>.<span class="fn">Max</span>(<span class="num">0</span>, <span class="kw">value</span>);   <span class="com">// clamp: negatives become 0 on the way in</span>
+}</pre>
+      <p>That's the whole reason C# people default to <code>{ get; set; }</code> over a bare field: it's a plain
+      variable <em>today</em>, but leaves a door open to add validation, logging, or change notifications tomorrow —
+      with zero edits to callers.</p>
+
+      <h3>The variations you'll actually meet</h3>
+      <table>
+        <tr><th>Written as</th><th>Meaning</th></tr>
+        <tr><td><code>{ get; set; }</code></td><td>Read <em>and</em> write freely. (Your default.)</td></tr>
+        <tr><td><code>{ get; }</code></td><td>Read-only — can only be set once, when the object is created. Great for values that shouldn't change afterward.</td></tr>
+        <tr><td><code>{ get; private set; }</code></td><td>Anyone can read it; only <em>this class</em> can change it. Controlled write access.</td></tr>
+        <tr><td><code>{ get; init; }</code></td><td>Settable only during object creation (<code>new X { … }</code>), then locked.</td></tr>
+        <tr><td><code>=&gt; someExpression;</code></td><td>Getter-<em>only</em>, computed on the fly. No stored value at all (see below).</td></tr>
+        <tr><td><code>= 100;</code> after it</td><td>A default value used if nobody sets one.</td></tr>
+      </table>
+
+      <div class="yourapp">
+        <p><span class="tag">In your app</span> — a "computed" property: getter only, <em>no stored value</em>:</p>
+        <pre><span class="filename">Models.cs → PlannerStore</span>
+[<span class="type">JsonIgnore</span>]
+<span class="kw">public</span> <span class="type">PeptidePlan</span>? ActivePlan =&gt; Plans.<span class="fn">FirstOrDefault</span>(p =&gt; p.Id == ActivePlanId) ?? Plans.<span class="fn">FirstOrDefault</span>();</pre>
+        <div class="plain"><span class="pe">In plain English</span>
+        "Whenever someone reads <em>ActivePlan</em>, look through my plans for the one whose Id matches
+        <em>ActivePlanId</em>. If I find it, that's the answer. If none matches, just fall back to the first plan I have."</div>
+        <p>There's no <code>set</code> and no backing field here. <code>ActivePlan</code> stores nothing — every time
+        you read it, the code after <code>=&gt;</code> runs fresh and finds the matching plan. Think of it as a getter
+        whose body is "go compute the answer right now." It behaves like a read-only property but is really a live
+        calculation. (The <code>[JsonIgnore]</code> on top is an <strong>attribute</strong> — metadata that tells the
+        JSON serializer "don't include this in the output," since it's derived, not real data.)</p>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="methods">
+      <h2>6. Methods in depth</h2>
+      <p class="lead">Reading a method signature is 80% of reading C#. Let's make it automatic.</p>
+      <pre><span class="kw">public</span>  <span class="kw">static</span>  <span class="kw">int</span>  <span class="fn">TierDoseCount</span>(<span class="type">DoseTier</span> tier, <span class="type">PeptidePlan</span> plan)
+<span class="com">  ▲       ▲      ▲       ▲              ▲                    ▲</span>
+<span class="com">  │       │      │       │              └────────────────────┴─ PARAMETERS (inputs, each has a type + name)</span>
+<span class="com">  │       │      │       └─ method NAME</span>
+<span class="com">  │       │      └───────── RETURN TYPE: it hands back an int. ("void" = returns nothing.)</span>
+<span class="com">  │       └──────────────── static: call on the class, no object needed</span>
+<span class="com">  └──────────────────────── public: callable from anywhere</span></pre>
+      <p>To call it: <code>int n = PlannerCalculator.TierDoseCount(myTier, myPlan);</code> — you pass a value for each
+      parameter, and catch what it <code>return</code>s.</p>
+
+      <h3>Two ways to write a method body</h3>
+      <pre><span class="com">// Block body — for multi-step logic (uses { } and return):</span>
+<span class="kw">public</span> <span class="kw">static</span> <span class="kw">double</span> <span class="fn">DosesPerWeek</span>(<span class="type">PeptidePlan</span> plan)
+{
+    <span class="kw">return</span> plan.ScheduleMode == ScheduleModes.Interval
+        ? <span class="num">7</span> / <span class="type">Math</span>.<span class="fn">Max</span>(<span class="num">1</span>, plan.EveryDays)
+        : <span class="type">Math</span>.<span class="fn">Max</span>(<span class="num">0.1</span>, plan.ShotsPerWeek);
+}
+
+<span class="com">// Expression body — for one-liners. `=>` replaces { return … }. Same thing, shorter:</span>
+<span class="kw">public</span> <span class="type">Task</span>&lt;<span class="type">PlannerStore</span>&gt; <span class="fn">GetStoreAsync</span>() =&gt; repository.<span class="fn">LoadCurrentAsync</span>();</pre>
+      <h3>The <code>? :</code> ternary — a compact if/else that produces a value</h3>
+      <p>"Ternary" just means "an operator that takes <strong>three</strong> parts" (tri = three). It's a one-line
+      way to <em>choose between two values</em>. The shape is always:</p>
+      <pre><span class="com">condition</span>  <span class="kw">?</span>  <span class="com">valueIfTrue</span>  <span class="kw">:</span>  <span class="com">valueIfFalse</span></pre>
+      <p>Read it out loud as a question: <em>"Is the condition true? If yes, use this; otherwise, use that."</em>
+      It's identical to JavaScript's ternary, so you already know it.</p>
+      <p>The key difference from a normal <code>if</code>: an <code>if</code> statement <em>does</em> something (runs
+      code); a ternary <em>is</em> a value you can assign or return. These two are equivalent:</p>
+      <pre><span class="com">// Plain if/else — 6 lines, assigns to a variable declared above:</span>
+<span class="kw">double</span> days;
+<span class="kw">if</span> (plan.ScheduleMode == ScheduleModes.Interval)
+    days = <span class="type">Math</span>.<span class="fn">Max</span>(<span class="num">1</span>, plan.EveryDays);
+<span class="kw">else</span>
+    days = <span class="num">7</span> / <span class="type">Math</span>.<span class="fn">Max</span>(<span class="num">0.1</span>, plan.ShotsPerWeek);
+
+<span class="com">// Same logic as a ternary — the whole thing IS the value, so you can return it directly:</span>
+<span class="kw">return</span> plan.ScheduleMode == ScheduleModes.Interval
+    <span class="kw">?</span> <span class="type">Math</span>.<span class="fn">Max</span>(<span class="num">1</span>, plan.EveryDays)          <span class="com">// used when the condition is TRUE</span>
+    <span class="kw">:</span> <span class="num">7</span> / <span class="type">Math</span>.<span class="fn">Max</span>(<span class="num">0.1</span>, plan.ShotsPerWeek); <span class="com">// used when the condition is FALSE</span></pre>
+      <div class="yourapp">
+        <p><span class="tag">In your app</span> — <code>PlannerCalculator</code> leans on ternaries because almost every
+        calc is "interval mode vs weekly mode." One from <code>ScheduleLabel</code>:</p>
+        <pre><span class="kw">return</span> plan.ScheduleMode == ScheduleModes.Interval
+    <span class="kw">?</span> $<span class="str">"every {plan.EveryDays} days"</span>            <span class="com">// TRUE  → interval wording</span>
+    <span class="kw">:</span> $<span class="str">"{Formatters.Number(plan.ShotsPerWeek, 1)}x per week"</span>; <span class="com">// FALSE → weekly wording</span></pre>
+        <p>(The <code>$"…{x}…"</code> is an <strong>interpolated string</strong> — like a JS template literal
+        <code>`…${x}…`</code>. The <code>$</code> enables the <code>{ }</code> slots.)</p>
+      </div>
+      <div class="note"><p><strong>When to use it:</strong> reach for a ternary when you're picking between two
+      <em>values</em> in a single line. If either branch needs to do several steps, use a full <code>if/else</code> —
+      cramming logic into a ternary gets unreadable fast. And don't nest them deeply; one level is friendly, three is a puzzle.</p></div>
+    </section>
+
+    <!-- 7 -->
+    <section id="records">
+      <h2>7. <code>record</code> vs <code>class</code></h2>
+      <p class="lead">You used both. Here's when each makes sense.</p>
+      <p>A <code>record</code> is a class optimized for <em>holding data that doesn't change</em> — think "a message
+      that just carries values." It gives you a super-compact syntax and value-based equality for free.</p>
+      <div class="yourapp">
+        <p><span class="tag">In your app</span> — the shapes of incoming API request bodies:</p>
+        <pre><span class="filename">Api/PlannerEndpoints.cs</span>
+<span class="kw">public sealed record</span> <span class="type">TierCreate</span>(<span class="kw">string</span>? Type, <span class="kw">double</span> Weeks = <span class="num">1</span>, <span class="kw">int</span> Count = <span class="num">1</span>, <span class="kw">double</span> DoseMg = <span class="num">0</span>);</pre>
+        <div class="plain"><span class="pe">In plain English</span>
+        "Make me a little data-holder called <em>TierCreate</em> with four slots — Type, Weeks, Count, DoseMg. If the
+        caller doesn't give Weeks/Count/DoseMg, default them to 1, 1, and 0. Once built, it doesn't change."</div>
+        <p>That single line declares a type with four read-only properties <em>and</em> a constructor to fill them.
+        The equivalent <code>class</code> would be ~15 lines. When the browser POSTs JSON, .NET builds one of these
+        <code>TierCreate</code> objects and hands it to your endpoint.</p>
+      </div>
+      <table>
+        <tr><th></th><th><code>class</code></th><th><code>record</code></th></tr>
+        <tr><td>Use for</td><td>Things with changing state &amp; behavior (<code>PeptidePlan</code>)</td><td>Immutable data carriers (API DTOs like <code>PlanUpdate</code>)</td></tr>
+        <tr><td>Equality</td><td>By identity (same object in memory?)</td><td>By value (same field values? → equal)</td></tr>
+        <tr><td>Syntax</td><td>Verbose</td><td>One-liner positional form</td></tr>
+      </table>
+      <p><small>"DTO" = Data Transfer Object — a dumb bag of fields whose only job is to move data across a boundary
+      (browser → server). Good interview vocabulary.</small></p>
+    </section>
+
+    <!-- 8 -->
+    <section id="null">
+      <h2>8. Nullable types &amp; null-safety</h2>
+      <p class="lead">The <code>?</code>, <code>??</code>, and <code>is null</code> you keep seeing.</p>
+      <p>C# forces you to be explicit about "this might be missing." A <code>?</code> after a type means "or null":</p>
+      <table>
+        <tr><th>Syntax</th><th>Means</th><th>Your code</th></tr>
+        <tr><td><code>int?</code></td><td>an int, <em>or</em> null (value not provided)</td><td><code>int? PreviewCount</code> in <code>PrefsUpdate</code></td></tr>
+        <tr><td><code>PeptidePlan?</code></td><td>a plan, or null (maybe none found)</td><td><code>ActivePlan</code></td></tr>
+        <tr><td><code>a ?? b</code></td><td>use <code>a</code>, but if it's null use <code>b</code> (fallback)</td><td><code>configuration["…"] ?? Environment.Get…</code></td></tr>
+        <tr><td><code>x is null</code></td><td>true when x is null</td><td><code>return plan is null ? NotFound(id) : Results.Ok(plan);</code></td></tr>
+        <tr><td><code>x?.Foo</code></td><td>read Foo only if x isn't null (else null)</td><td><code>firstPlan?.PeptideName</code></td></tr>
+        <tr><td><code>is { } pc</code></td><td>"if not null, call it <code>pc</code>"</td><td><code>if (body.PreviewCount is { } pc) …</code></td></tr>
+      </table>
+      <div class="yourapp">
+        <p><span class="tag">In your app</span> — the PUT /prefs handler only updates fields the client actually sent:</p>
+        <pre><span class="kw">if</span> (body.PreviewCount <span class="kw">is</span> { } pc) prefs.PreviewCount = pc;  <span class="com">// pc = the non-null value</span>
+<span class="kw">if</span> (body.MaxUnits <span class="kw">is</span> { } mu) prefs.MaxUnits = mu;</pre>
+        <div class="plain"><span class="pe">In plain English</span>
+        "Did the caller actually send a PreviewCount? If yes, call that value <em>pc</em> and save it. Same for MaxUnits.
+        If a field came in as null (not sent), leave the existing setting untouched."</div>
+        <p>Because each property is nullable (<code>int?</code>, <code>double?</code>), "not sent" (null) is
+        distinguishable from "sent as 0". That's why partial updates work correctly.</p>
+      </div>
+      <div class="warnbox"><p><strong>Why C# nags you about null:</strong> the #1 crash in most programs is
+      "tried to use something that was null." C#'s nullable rules push those bugs to <em>compile time</em>, so your
+      app doesn't blow up on a user. In an interview, calling this out shows maturity.</p></div>
+    </section>
+
+    <!-- 9 -->
+    <section id="linq">
+      <h2>9. Collections &amp; LINQ</h2>
+      <p class="lead">LINQ is C#'s <code>.map</code>/<code>.filter</code>/<code>.find</code> — you'll recognize it instantly.</p>
+      <table>
+        <tr><th>JavaScript</th><th>C# LINQ</th><th>Does</th></tr>
+        <tr><td><code>arr.find(p =&gt; …)</code></td><td><code>list.FirstOrDefault(p =&gt; …)</code></td><td>first match, or null if none</td></tr>
+        <tr><td><code>arr.filter(p =&gt; …)</code></td><td><code>list.Where(p =&gt; …)</code></td><td>keep matches</td></tr>
+        <tr><td><code>arr.map(x =&gt; …)</code></td><td><code>list.Select(x =&gt; …)</code></td><td>transform each</td></tr>
+        <tr><td><code>arr.some(p =&gt; …)</code></td><td><code>list.Any(p =&gt; …)</code></td><td>any match? → bool</td></tr>
+        <tr><td><code>arr.every(p =&gt; …)</code></td><td><code>list.All(p =&gt; …)</code></td><td>all match? → bool</td></tr>
+        <tr><td><code>[...new Set(a)]</code></td><td><code>a.Distinct()</code></td><td>de-duplicate</td></tr>
+      </table>
+      <p>That <code>p =&gt; …</code> is a <strong>lambda</strong> — an inline anonymous function, exactly like an arrow
+      function in JS.</p>
+      <div class="yourapp">
+        <p><span class="tag">In your app</span> — straight from <code>PlannerEndpoints.cs</code>:</p>
+        <pre><span class="com">// find one plan by id (or null):</span>
+<span class="kw">var</span> plan = store.Plans.<span class="fn">FirstOrDefault</span>(p =&gt; p.Id == id);
+
+<span class="com">// keep every plan EXCEPT the one being deleted:</span>
+store.Plans = store.Plans.<span class="fn">Where</span>(p =&gt; p.Id != id).<span class="fn">ToList</span>();
+
+<span class="com">// dedupe + sort the manually-opened BAC dates:</span>
+prefs.ManualBacOpenDates = dates.<span class="fn">Distinct</span>().<span class="fn">Order</span>().<span class="fn">ToList</span>();</pre>
+        <div class="plain"><span class="pe">In plain English</span>
+        "Line 1: hunt through the plans for the first one whose Id matches — or nothing. Line 2: keep every plan
+        <em>except</em> the one being deleted, and rebuild the list from what's left. Line 3: take the dates, throw out
+        duplicates, sort them, and turn the result back into a list."</div>
+
+        <div class="code-breakdown">
+          <h4>Call out every moving part</h4>
+          <p><code>var plan = store.Plans.FirstOrDefault(p =&gt; p.Id == id);</code></p>
+          <ul>
+            <li><code>var</code> = C# figures out the variable's type from the right side. Here it becomes <code>PeptidePlan?</code>: a plan, or null.</li>
+            <li><code>plan</code> = a new local variable. It will hold the matching plan object, or null.</li>
+            <li><code>store</code> = an object. Specifically, the current <code>PlannerStore</code> object holding app state.</li>
+            <li><code>Plans</code> = a property on <code>store</code>. It is the list of saved <code>PeptidePlan</code> objects.</li>
+            <li><code>FirstOrDefault(...)</code> = a LINQ method/function call on the list. It returns the first item that matches, or the default value if none match.</li>
+            <li><code>p =&gt; ...</code> = a lambda: a tiny inline function. Read it as "for each plan, call that plan <code>p</code>, then check..."</li>
+            <li><code>p</code> = one plan object from <code>store.Plans</code> while LINQ is checking the list.</li>
+            <li><code>p.Id</code> = the <code>Id</code> property on that one plan object.</li>
+            <li><code>id</code> = the id value we are looking for, usually from the URL route like <code>/plans/{id}</code>.</li>
+            <li><code>==</code> = comparison operator. It asks "are these two values equal?"</li>
+          </ul>
+          <p class="line-read">Read the line as: "Make a variable named <code>plan</code>. Search the store's Plans list. For each plan <code>p</code>, check whether <code>p.Id</code> equals the requested <code>id</code>. Give me the first match, or null."</p>
+
+          <p><code>store.Plans = store.Plans.Where(p =&gt; p.Id != id).ToList();</code></p>
+          <ul>
+            <li><code>store.Plans = ...</code> = replace the old <code>Plans</code> list with a new list.</li>
+            <li><code>store</code> = the same <code>PlannerStore</code> object.</li>
+            <li><code>Plans</code> = the list property being read on the right side and overwritten on the left side.</li>
+            <li><code>Where(...)</code> = a LINQ method/function call like JavaScript <code>filter</code>. It keeps only items where the condition is true.</li>
+            <li><code>p =&gt; p.Id != id</code> = lambda saying "for each plan <code>p</code>, keep it if its Id is not the deleted id."</li>
+            <li><code>p</code> = one plan object currently being tested.</li>
+            <li><code>p.Id</code> = the id property on that one plan.</li>
+            <li><code>!=</code> = not-equal operator. It asks "are these two values different?"</li>
+            <li><code>ToList()</code> = method/function call that runs the LINQ query and turns the result back into a real <code>List&lt;PeptidePlan&gt;</code>.</li>
+          </ul>
+          <p class="line-read">Read the line as: "Build a new Plans list containing every plan except the one whose Id matches <code>id</code>, then save that new list back onto <code>store.Plans</code>."</p>
+
+          <p><code>prefs.ManualBacOpenDates = dates.Distinct().Order().ToList();</code></p>
+          <ul>
+            <li><code>prefs</code> = an object holding user preferences/settings.</li>
+            <li><code>ManualBacOpenDates</code> = a property on <code>prefs</code>. It stores the manually opened BAC water dates.</li>
+            <li><code>dates</code> = a local variable holding the incoming date values.</li>
+            <li><code>Distinct()</code> = LINQ method/function call that removes duplicates.</li>
+            <li><code>Order()</code> = LINQ method/function call that sorts the remaining dates.</li>
+            <li><code>ToList()</code> = method/function call that turns the sorted result into a real list.</li>
+            <li>The dots mean chaining: take the result from one method and immediately call the next method on it.</li>
+          </ul>
+          <p class="line-read">Read the line as: "Take the incoming dates, remove duplicates, sort them, convert them to a list, then store that clean list in <code>prefs.ManualBacOpenDates</code>."</p>
+        </div>
+      </div>
+      <div class="note"><p><strong>Why <code>.ToList()</code> at the end?</strong> LINQ is <em>lazy</em> — <code>Where</code>
+      just describes a query; nothing runs until you force it. <code>.ToList()</code> runs it and freezes the
+      results into a real list. (Not always needed, but common.)</p></div>
+    </section>
+
+    <!-- 10 -->
+    <section id="async">
+      <h2>10. <code>async</code> / <code>await</code> / <code>Task</code></h2>
+      <p class="lead">Same idea as JavaScript's async/await — but <code>Task</code> deserves a real deep-dive, because it's the piece people wave past.</p>
+
+      <h3>First, the quick JS map</h3>
+      <table>
+        <tr><th>JavaScript</th><th>C#</th></tr>
+        <tr><td><code>Promise</code></td><td><code>Task</code> (finishes, no result) / <code>Task&lt;T&gt;</code> (finishes with a value of type T)</td></tr>
+        <tr><td><code>async function f()</code></td><td><code>async Task&lt;T&gt; F()</code></td></tr>
+        <tr><td><code>await g()</code></td><td><code>await G()</code></td></tr>
+      </table>
+
+      <h3>So what <em>is</em> a Task, really?</h3>
+      <p>A <code>Task</code> is an <strong>object that represents a piece of work that may not be finished yet</strong>.
+      It's a receipt, an IOU, a "I'll get back to you." When you start slow work (reading SQLite, calling a network),
+      you don't get the answer immediately — you get a <code>Task</code> handle <em>right now</em> that promises to
+      hold the answer <em>later</em>.</p>
+      <div class="note"><p><strong>Analogy:</strong> you order coffee and get a <em>buzzer</em>. The buzzer isn't the
+      coffee — it's a stand-in you can hold, put in your pocket, or hand to a friend. When the coffee's ready the
+      buzzer goes off. A <code>Task</code> is that buzzer; <code>await</code> is "sit and wait for it to buzz, but let
+      other people order while I wait."</p></div>
+
+      <p>Every Task is in one of a few states, and it moves through them:</p>
+      <table>
+        <tr><th>State</th><th>Meaning</th></tr>
+        <tr><td>Running (not completed)</td><td>The work is still in progress. The buzzer hasn't gone off.</td></tr>
+        <tr><td>RanToCompletion</td><td>Finished successfully. If it's a <code>Task&lt;T&gt;</code>, the result value is now sitting inside it.</td></tr>
+        <tr><td>Faulted</td><td>The work threw an exception. <code>await</code>-ing it will re-throw that exception to you.</td></tr>
+        <tr><td>Canceled</td><td>It was cancelled before finishing (via a cancellation token).</td></tr>
+      </table>
+
+      <h3><code>Task</code> vs <code>Task&lt;T&gt;</code> — the one distinction to nail</h3>
+      <div class="cards">
+        <div class="card">
+          <h4><code>Task</code></h4>
+          <p class="lbl">work that finishes, but hands back nothing</p>
+          <p>Like a <code>void</code> method, but async. You <code>await</code> it just to know "it's done."</p>
+          <pre style="margin:8px 0"><span class="kw">await</span> repository.<span class="fn">SaveCurrentAsync</span>(store);
+<span class="com">// nothing to capture — we just wait for the write to finish</span></pre>
+        </div>
+        <div class="card">
+          <h4><code>Task&lt;T&gt;</code></h4>
+          <p class="lbl">work that finishes AND produces a value of type T</p>
+          <p><code>await</code> unwraps it and gives you the <code>T</code> inside.</p>
+          <pre style="margin:8px 0"><span class="type">PlannerStore</span> store = <span class="kw">await</span> repository.<span class="fn">LoadCurrentAsync</span>();
+<span class="com">// LoadCurrentAsync returns Task&lt;PlannerStore&gt;;</span>
+<span class="com">// await peels off the Task&lt;&gt; wrapper → a PlannerStore</span></pre>
+        </div>
+      </div>
+      <div class="warnbox"><p><strong>The mental model for <code>await</code>:</strong> it "unwraps" the box.
+      <code>await</code> a <code>Task&lt;PlannerStore&gt;</code> and you get a <code>PlannerStore</code>. <code>await</code>
+      a plain <code>Task</code> and you get nothing (like unwrapping an empty box) — you just move on knowing it's done.
+      Forgetting the <code>await</code> is the classic bug: you'd be holding the <em>buzzer</em> and trying to drink
+      it, instead of the coffee.</p></div>
+
+      <h3>Reading an async method signature</h3>
+      <pre><span class="kw">public</span>  <span class="kw">async</span>  <span class="type">Task</span>&lt;<span class="type">PlannerStore</span>&gt;  <span class="fn">LoadCurrentAsync</span>()
+<span class="com">  ▲       ▲            ▲                    ▲</span>
+<span class="com">  │       │            │                    └─ note the "Async" name suffix — a convention, not a rule</span>
+<span class="com">  │       │            └─ RETURN TYPE: "eventually gives back a PlannerStore"</span>
+<span class="com">  │       └───────────── async: "this method uses await inside, and hands back a Task"</span>
+<span class="com">  └───────────────────── normal access modifier</span></pre>
+      <p>Key insight: the method is <em>declared</em> to return <code>Task&lt;PlannerStore&gt;</code>, but inside its body
+      you <code>return</code> a plain <code>PlannerStore</code>. The <code>async</code> keyword tells the compiler to
+      automatically wrap your return value in a Task for you. You write "return the store"; the caller receives "a Task
+      that will contain the store."</p>
+
+      <h3>Why bother? What <code>await</code> actually buys you</h3>
+      <p>When your server hits <code>await repository.LoadCurrentAsync()</code>, reading from disk takes (in computer
+      terms) ages. Two ways to handle that wait:</p>
+      <table>
+        <tr><th></th><th>Blocking (bad)</th><th>Async with await (good)</th></tr>
+        <tr><td>The thread</td><td>Sits frozen, doing nothing, until the disk replies.</td><td>Is released back to the server to go handle <em>other</em> requests.</td></tr>
+        <tr><td>Under load</td><td>100 slow requests = 100 stuck threads = server chokes.</td><td>A handful of threads juggle thousands of waiting requests.</td></tr>
+        <tr><td>When done</td><td>—</td><td>The runtime grabs a free thread and resumes right after the <code>await</code>, as if it never paused.</td></tr>
+      </table>
+      <p>So <code>await</code> means "pause <em>this</em> logical flow, but don't waste the thread — go be useful
+      elsewhere, and wake me up when my Task completes." That's the whole point of async on a web server: throughput.</p>
+
+      <div class="yourapp">
+        <p><span class="tag">In your app</span> — <code>PlannerService.MutateAsync</code>, now annotated for Tasks:</p>
+        <pre><span class="com">// Declared to return Task&lt;T&gt;. `async` lets us use `await` inside and auto-wraps the result.</span>
+<span class="kw">public async</span> <span class="type">Task</span>&lt;<span class="type">T</span>&gt; <span class="fn">MutateAsync</span>&lt;<span class="type">T</span>&gt;(<span class="type">Func</span>&lt;<span class="type">PlannerStore</span>, <span class="type">T</span>&gt; mutate)
+{
+    <span class="kw">await</span> _gate.<span class="fn">WaitAsync</span>();                      <span class="com">// await a plain Task → just "wait until I hold the lock"</span>
+    <span class="kw">try</span>
+    {
+        <span class="type">PlannerStore</span> store = <span class="kw">await</span> repository.<span class="fn">LoadCurrentAsync</span>(); <span class="com">// await Task&lt;PlannerStore&gt; → unwrap to a PlannerStore</span>
+        <span class="type">T</span> result = <span class="fn">mutate</span>(store);              <span class="com">// synchronous (fast) — no Task, no await needed</span>
+        <span class="type">PlannerNormalizer</span>.<span class="fn">Normalize</span>(store);
+        <span class="kw">await</span> repository.<span class="fn">SaveCurrentAsync</span>(store);      <span class="com">// await a plain Task → wait for the write to finish</span>
+        <span class="kw">return</span> result;                          <span class="com">// we return a T; caller receives Task&lt;T&gt; (async wraps it)</span>
+    }
+    <span class="kw">finally</span> { _gate.<span class="fn">Release</span>(); }                  <span class="com">// runs no matter what, even on exception</span>
+}</pre>
+        <div class="plain"><span class="pe">In plain English</span>
+        "Wait my turn for the lock so no one else touches the data at the same time. Once I have it: load the current
+        state from the database, run whatever change was handed to me, tidy it up, and save it back. Give the caller
+        back whatever the change produced. And no matter what happens — success or crash — always let go of the lock on
+        my way out."</div>
+        <p>Notice the mix: some calls are <code>await</code>-ed (the slow, Task-returning ones — lock, DB read, DB
+        write) and some aren't (<code>mutate</code> and <code>Normalize</code> are fast, synchronous, return no Task).
+        You only <code>await</code> things that <em>hand you a Task</em>.</p>
+      </div>
+
+      <h3>Two rules people trip on</h3>
+      <ol>
+        <li><strong>To <code>await</code>, your method must be <code>async</code>.</strong> The two travel together:
+        if any line inside uses <code>await</code>, the method's signature needs <code>async</code> and must return
+        <code>Task</code> / <code>Task&lt;T&gt;</code> (a top-level app entry point can be an exception).</li>
+        <li><strong><code>await</code> unwraps <em>and</em> re-throws.</strong> If the awaited Task faulted, the
+        exception surfaces right at the <code>await</code> — so ordinary <code>try/catch</code> works around async
+        calls, exactly like synchronous code. That's how your <code>Run(...)</code> helper in §12 catches a
+        <code>PlannerApiException</code> thrown deep inside an awaited mutate.</li>
+      </ol>
+
+      <details>
+        <summary>Bonus: running Tasks in parallel with <code>Task.WhenAll</code></summary>
+        <p>Because a Task is just a handle, you can start several <em>without</em> awaiting immediately, then wait for
+        all of them together — they overlap instead of running one-after-another:</p>
+        <pre><span class="com">// Kick both off — no await yet, so they run concurrently:</span>
+<span class="type">Task</span>&lt;<span class="type">ComputedPlan</span>&gt; a = svc.<span class="fn">ComputeAsync</span>(planA);
+<span class="type">Task</span>&lt;<span class="type">ComputedPlan</span>&gt; b = svc.<span class="fn">ComputeAsync</span>(planB);
+
+<span class="com">// Now wait for both to finish:</span>
+<span class="type">ComputedPlan</span>[] results = <span class="kw">await</span> <span class="type">Task</span>.<span class="fn">WhenAll</span>(a, b);</pre>
+        <p>This is C#'s <code>Promise.all([...])</code>. Your app doesn't need it today (its DB work is serialized
+        behind a lock on purpose), but it's a common interview follow-up: "how would you run these two independent
+        async calls at the same time?" → <code>Task.WhenAll</code>.</p>
+      </details>
+    </section>
+
+    <!-- 11 -->
+    <section id="di">
+      <h2>11. Dependency Injection (DI)</h2>
+      <p class="lead">The "how do my classes get their collaborators" pattern that's everywhere in .NET.</p>
+      <p>Instead of a class building its own dependencies, it <em>declares what it needs</em> in its constructor, and
+      .NET hands them over. This is DI. It sounds fancy; it's just "don't <code>new</code> your own stuff — ask for it."</p>
+      <pre><span class="filename">Services/PlannerService.cs</span>
+<span class="kw">public sealed class</span> <span class="type">PlannerService</span>(<span class="type">PlannerRepository</span> repository)
+<span class="com">                                    ▲</span>
+<span class="com">   "I need a PlannerRepository to do my job. Someone please give me one." ┘</span></pre>
+      <p>Who provides it? You registered the wiring once, at startup:</p>
+      <pre><span class="filename">Program.cs</span>
+builder.Services.<span class="fn">AddSingleton</span>&lt;<span class="type">PlannerRepository</span>&gt;();  <span class="com">// "make ONE, share it everywhere"</span>
+builder.Services.<span class="fn">AddSingleton</span>&lt;<span class="type">PlannerService</span>&gt;();     <span class="com">// PlannerService auto-gets the repository above</span></pre>
+      <div class="plain"><span class="pe">In plain English</span>
+      "Hey .NET: for the whole life of this app, keep exactly one PlannerRepository and one PlannerService around.
+      Whenever anybody asks for either, hand them that same shared instance — and when you build the PlannerService,
+      you already know it needs a PlannerRepository, so plug it in for me."</div>
+      <p>Now anywhere that needs a <code>PlannerService</code> — like your API endpoints — just lists it as a
+      parameter and .NET supplies the fully-built instance:</p>
+      <pre>api.<span class="fn">MapGet</span>(<span class="str">"/state"</span>, <span class="kw">async</span> (<span class="type">PlannerService</span> svc) =&gt; <span class="type">Results</span>.<span class="fn">Ok</span>(<span class="kw">await</span> svc.<span class="fn">GetStoreAsync</span>()));
+<span class="com">                                     ▲ .NET injects the shared PlannerService here, automatically</span></pre>
+      <div class="note"><p><strong>Why bother?</strong> (Great interview answer.) It keeps classes loosely coupled and
+      makes them testable — in a unit test you can inject a fake repository. <code>AddSingleton</code> = one shared
+      instance for the app's life; other flavors are <code>AddScoped</code> (one per web request) and
+      <code>AddTransient</code> (a fresh one every time).</p></div>
+    </section>
+
+    <!-- 12 -->
+    <section id="api">
+      <h2>12. The API &amp; a request's journey</h2>
+      <p class="lead">Your API uses ASP.NET "Minimal APIs" — routes declared as one-liners. Let's trace one end-to-end.</p>
+      <p>Your <code>PlannerEndpoints.MapPlannerApi()</code> registers the whole REST surface. A sample:</p>
+      <pre><span class="filename">Api/PlannerEndpoints.cs</span>
+<span class="kw">var</span> api = app.<span class="fn">MapGroup</span>(<span class="str">"/api"</span>);                <span class="com">// every route below is prefixed with /api</span>
+
+api.<span class="fn">MapGet</span>(<span class="str">"/plans"</span>, …);                    <span class="com">// GET  /api/plans        → list plans</span>
+api.<span class="fn">MapPost</span>(<span class="str">"/plans"</span>, …);                   <span class="com">// POST /api/plans        → add a plan</span>
+api.<span class="fn">MapPut</span>(<span class="str">"/plans/{id}"</span>, …);              <span class="com">// PUT  /api/plans/abc    → update plan abc</span>
+api.<span class="fn">MapDelete</span>(<span class="str">"/plans/{id}"</span>, …);           <span class="com">// DELETE /api/plans/abc  → remove plan abc</span>
+api.<span class="fn">MapGet</span>(<span class="str">"/plans/{id}/compute"</span>, …);      <span class="com">// GET → full vial math for one plan</span>
+api.<span class="fn">MapGet</span>(<span class="str">"/schedule.ics"</span>, …);            <span class="com">// GET → downloadable calendar file</span></pre>
+      <div class="plain"><span class="pe">In plain English</span>
+      "Set up a group of routes all starting with /api. When a GET request comes in for /api/plans, run this handler.
+      When a POST comes to /api/plans, run that one. The <em>{id}</em> in the path is a fill-in-the-blank — whatever's
+      there gets handed to the handler as <em>id</em>."</div>
+
+      <h3>What happens when the browser calls <code>POST /api/plans/abc/tiers</code></h3>
+      <details open>
+        <summary>Step through the whole request</summary>
+        <ol>
+          <li><strong>Route match.</strong> ASP.NET sees the URL + verb and picks <code>MapPost("/plans/{id}/tiers", …)</code>. It pulls <code>id = "abc"</code> out of the URL.</li>
+          <li><strong>Model binding.</strong> The JSON body is deserialized into a <code>TierCreate</code> record. <code>PlannerService</code> is <em>injected</em> (§11).</li>
+          <li><strong>Your handler runs.</strong> It calls <code>Run(svc, store =&gt; { … })</code>, passing a lambda that adds the new tier to the right plan.</li>
+          <li><strong>Atomic mutate.</strong> <code>Run</code> → <code>svc.MutateAsync(…)</code> locks, loads state from SQLite, applies your lambda, normalizes, saves. (§10)</li>
+          <li><strong>Result → HTTP.</strong> Success returns <code>Results.Created(...)</code> → HTTP 201. A <code>PlannerApiException</code> becomes <code>Results.Problem(...)</code> → 404/409. .NET serializes the object back to JSON.</li>
+        </ol>
+      </details>
+      <div class="yourapp">
+        <p><span class="tag">In your app</span> — the error-to-HTTP translation, one tidy helper:</p>
+        <pre><span class="kw">private static async</span> <span class="type">Task</span>&lt;<span class="type">IResult</span>&gt; <span class="fn">Run</span>&lt;<span class="type">T</span>&gt;(<span class="type">PlannerService</span> svc, <span class="type">Func</span>&lt;<span class="type">PlannerStore</span>, <span class="type">T</span>&gt; mutate, <span class="kw">bool</span> created = <span class="kw">false</span>)
+{
+    <span class="kw">try</span>
+    {
+        <span class="kw">var</span> result = <span class="kw">await</span> svc.<span class="fn">MutateAsync</span>(mutate);
+        <span class="kw">return</span> created ? <span class="type">Results</span>.<span class="fn">Created</span>(…, result) : <span class="type">Results</span>.<span class="fn">Ok</span>(result);
+    }
+    <span class="kw">catch</span> (<span class="type">PlannerApiException</span> ex)
+    {
+        <span class="kw">return</span> <span class="type">Results</span>.<span class="fn">Problem</span>(detail: ex.Message, statusCode: ex.StatusCode);
+    }
+}</pre>
+        <div class="plain"><span class="pe">In plain English</span>
+        "Try to apply the change to the store. If it works, reply 201 Created (for new things) or 200 OK (otherwise)
+        with the result. But if the change threw one of our known errors — like 'no plan with that id' — don't crash;
+        catch it and reply with that error's own status code and message instead."</div>
+      </div>
+      <div class="note"><p><code>IEndpointRouteBuilder</code>, <code>IResult</code>, <code>IConfiguration</code> — the leading
+      <code>I</code> is a naming convention for <strong>interfaces</strong>: a <em>contract</em> listing methods a type
+      promises to provide, without saying how. Your code depends on the contract, not a specific implementation —
+      that's what makes swapping/testing possible.</p></div>
+    </section>
+
+    <!-- 13 Trouble spots -->
+    <section id="trouble">
+      <h2>13. Trouble spots, nailed ★</h2>
+      <p class="lead">The six things you told me still feel fuzzy — each boiled down to a sentence you can repeat, plus a quick gut-check.</p>
+
+      <h3>① Class vs Object vs Method (the one to over-learn)</h3>
+      <p>Say this out loud until it's boring:</p>
+      <div class="hero" style="margin:14px 0">
+        <p style="font-size:18px;margin:0"><strong style="color:var(--type)">Class</strong> = the recipe.
+        <strong style="color:var(--accent-2)">Object</strong> = the cake you baked from it.
+        <strong style="color:var(--fn)">Method</strong> = something the cake can do (<em>"slice yourself"</em>).</p>
+      </div>
+      <p>Gut-check with your own code — which is which?</p>
+      <pre><span class="kw">var</span> plan = <span class="kw">new</span> <span class="type">PeptidePlan</span>();     <span class="com">// PeptidePlan = class (recipe).  plan = object (the cake).</span>
+plan.Tiers.<span class="fn">Add</span>(<span class="kw">new</span> <span class="type">DoseTier</span>());  <span class="com">// Add = method (an action the Tiers object performs).</span></pre>
+      <div class="plain"><span class="pe">In plain English</span>
+      "<em>PeptidePlan</em> is a template describing what a plan is. <em>new</em> bakes one real plan and I name it
+      <em>plan</em>. Then I tell that plan's tier-list to do something: add a fresh tier."</div>
+      <div class="warnbox"><p><strong>Fastest tell:</strong> if you can type <code>.something()</code> after it and it
+      <em>does</em> a thing, that's a <strong>method</strong>. If you wrote <code>new X</code>, the result is an
+      <strong>object</strong>. The bare word <code>X</code> after <code>class</code> is the <strong>class</strong>.</p></div>
+
+      <h3>② <code>new</code> vs <code>static</code> — a 2-question decision</h3>
+      <p>This is the same confusion wearing a different hat. Ask yourself:</p>
+      <table>
+        <tr><th>Question</th><th>If YES</th><th>If NO</th></tr>
+        <tr><td>Does this thing need to <em>remember data unique to it</em> (its own name, dose, dates)?</td><td>It's an instance → you must <code>new</code> one.</td><td>Maybe static…</td></tr>
+        <tr><td>Is it just a calculation/helper with no memory of its own?</td><td><code>static</code> → call it on the type, no <code>new</code>.</td><td>Instance.</td></tr>
+      </table>
+      <pre><span class="type">PeptidePlan</span> plan = <span class="kw">new</span>();          <span class="com">// NEW: each plan carries its own data → instance</span>
+<span class="kw">double</span> d = <span class="type">PlannerCalculator</span>.<span class="fn">IntervalDays</span>(plan);  <span class="com">// STATIC: pure math, no data of its own</span>
+<span class="kw">double</span> m = <span class="type">Math</span>.<span class="fn">Max</span>(<span class="num">1</span>, x);         <span class="com">// STATIC: Math is a toolbox — you never "new Math()"</span></pre>
+      <div class="plain"><span class="pe">In plain English</span>
+      "If every copy would hold different information, I need to build individual copies with <em>new</em>. If it's just
+      a reusable tool that takes inputs and gives an answer, it can be <em>static</em> — one shared toolbox, no building required."</div>
+      <p><strong>One-liner for the interview:</strong> "Instance members hold per-object state; static members belong to
+      the type and are for stateless helpers or shared constants."</p>
+
+      <h3>③ <code>get</code> / <code>set</code> — what actually happens</h3>
+      <p>A property is a variable with two tiny hidden methods bolted on. Reading runs the <code>get</code>; assigning
+      runs the <code>set</code> (where <code>value</code> = the thing you assigned).</p>
+      <pre>plan.VialMg = <span class="num">500</span>;      <span class="com">// runs the SET  → value is 500</span>
+<span class="kw">var</span> v = plan.VialMg;    <span class="com">// runs the GET  → hands back 500</span></pre>
+      <div class="plain"><span class="pe">In plain English</span>
+      "It looks like a plain variable, but under the hood, reading it calls a little 'give me the value' function and
+      writing it calls a little 'store this value' function. That's why I can add rules later without changing callers."</div>
+      <p><strong>Why anyone cares (say this):</strong> "Auto-properties look like fields but are methods, so I can later
+      add validation, make the setter private, or compute the value — without touching any calling code."</p>
+
+      <h3>④ Dependency Injection — the one-sentence version</h3>
+      <div class="hero" style="margin:14px 0">
+        <p style="font-size:18px;margin:0">"A class <strong>asks for</strong> what it needs in its constructor, and the
+        framework <strong>hands it over</strong> — instead of the class building its own dependencies."</p>
+      </div>
+      <pre><span class="kw">public sealed class</span> <span class="type">PlannerService</span>(<span class="type">PlannerRepository</span> repository) { … }
+<span class="com">                                    ▲ "give me a repository; I won't make my own"</span></pre>
+      <div class="plain"><span class="pe">In plain English</span>
+      "PlannerService doesn't go find or build a database repository itself. It just says 'I need one of these,' and at
+      startup I told .NET how to supply it. .NET wires them together for me."</div>
+      <p><strong>Why bother (the payoff line):</strong> "It decouples classes from their dependencies, so I can swap
+      implementations and inject fakes in tests." Lifetimes: <code>Singleton</code> (one forever), <code>Scoped</code>
+      (one per web request), <code>Transient</code> (a new one every time).</p>
+
+      <h3>⑤ <code>sealed</code> — and the inheritance idea behind it</h3>
+      <p>To get <code>sealed</code>, you need one background idea: <strong>inheritance</strong>. Normally a class can be
+      used as a base that other classes <em>extend</em> (inherit its members and add/override). <code>sealed</code>
+      slams that door: "no one may inherit from this class."</p>
+      <pre><span class="kw">public sealed class</span> <span class="type">DoseTier</span> { … }   <span class="com">// nobody can write ": DoseTier" to extend it</span></pre>
+      <div class="plain"><span class="pe">In plain English</span>
+      "This class is finished. You can use it and create objects from it, but you can't make a specialized subclass of
+      it. It's locked as-is."</div>
+      <p><strong>Why nearly every class in your app is sealed (great answer):</strong> "These are data models and
+      services with no intent to be subclassed. Sealing states that intent, prevents accidental inheritance, and even
+      lets the runtime optimize method calls. It's a sensible default unless you're deliberately designing for extension."</p>
+
+      <h3>⑥ Task / async / await — the 20-second recap</h3>
+      <table>
+        <tr><th>Thing</th><th>Say this</th></tr>
+        <tr><td><code>Task</code></td><td>"A handle to work that isn't done yet — a buzzer/IOU. <code>Task&lt;T&gt;</code> also carries a result of type T."</td></tr>
+        <tr><td><code>await</code></td><td>"Pause this flow until the Task finishes and unwrap its result — but free the thread to do other work meanwhile."</td></tr>
+        <tr><td><code>async</code></td><td>"Marks a method that uses <code>await</code> inside and returns a Task."</td></tr>
+      </table>
+      <div class="plain"><span class="pe">In plain English</span>
+      "Slow work hands me a buzzer instead of making me stand frozen at the counter. <em>await</em> means 'go help other
+      customers, and tap me when this buzzer goes off — then give me my coffee.'"</div>
+      <p><strong>Why it matters on a server (the point):</strong> "It's about throughput. While one request waits on the
+      database, the thread is freed to serve others, so a few threads handle thousands of overlapping requests."</p>
+
+      <div class="note"><p><strong>If they ask "what confused you learning C#?"</strong> — turn it into a strength:
+      "Coming from JS, the biggest shift was that C# is strongly typed and compiled, so a lot of my old runtime bugs now
+      surface at compile time. Getting comfortable with types, <code>Task&lt;T&gt;</code>, and dependency injection was
+      the learning curve — and I appreciate the safety they buy." Honest + shows growth.</p></div>
+    </section>
+
+    <!-- Mock interview drills -->
+    <section id="drills">
+      <h2>Mock interview drills 🎤</h2>
+      <p class="lead">The real skill isn't recognizing an answer — it's <em>speaking</em> one under mild pressure.
+      For each prompt: <strong>say your answer out loud first</strong> (yes, actually talk), <em>then</em> reveal the
+      model answer and compare. Do these tonight and again in the morning.</p>
+      <div class="note"><p><strong>How to use the "say this" answers:</strong> they're a <em>skeleton</em>, not a
+      script to memorize word-for-word. Interviewers can tell recited lines from real understanding. Hit the key
+      points in your own words — the structure is what keeps you from rambling.</p></div>
+      <div class="quiz-controls">
+        <button onclick="toggleAllDrills()" id="drillToggle">Reveal all answers</button>
+      </div>
+      <div id="drills-list"></div>
+    </section>
+
+    <!-- Glossary -->
+    <section id="glossary">
+      <h2>Cheat-sheet</h2>
+      <p class="lead">Skim this the morning of the interview.</p>
+      <table>
+        <tr><th>Term</th><th>One-liner</th></tr>
+        <tr><td><code>class</code></td><td>Blueprint for objects. Has data (properties) + behavior (methods).</td></tr>
+        <tr><td>object / instance</td><td>A concrete thing built with <code>new</code> from a class.</td></tr>
+        <tr><td>method</td><td>A function that lives in a class; called with a dot: <code>obj.Do()</code>.</td></tr>
+        <tr><td>property</td><td>A field with a hidden get/set: <code>{ get; set; }</code>.</td></tr>
+        <tr><td><code>static</code></td><td>Belongs to the class, not an object. No <code>new</code> needed.</td></tr>
+        <tr><td><code>sealed</code></td><td>This class can't be inherited from.</td></tr>
+        <tr><td><code>record</code></td><td>Concise, value-equal class for immutable data (DTOs).</td></tr>
+        <tr><td><code>List&lt;T&gt;</code></td><td>Growable, type-safe array of T.</td></tr>
+        <tr><td><code>T?</code> / <code>??</code> / <code>is null</code></td><td>nullable type / fallback value / null check.</td></tr>
+        <tr><td>LINQ</td><td><code>Where/Select/FirstOrDefault/Any/All</code> = filter/map/find/some/every.</td></tr>
+        <tr><td>lambda <code>x =&gt; …</code></td><td>Inline anonymous function (arrow function).</td></tr>
+        <tr><td><code>Task&lt;T&gt;</code> / <code>async</code> / <code>await</code></td><td>Promise / async fn / await. Same as JS.</td></tr>
+        <tr><td>Dependency Injection</td><td>Ask for collaborators in the constructor; the framework supplies them.</td></tr>
+        <tr><td>interface (<code>IThing</code>)</td><td>A contract of methods a type must implement.</td></tr>
+        <tr><td>namespace / using</td><td>Grouping label / import.</td></tr>
+        <tr><td>Minimal API</td><td>Routes declared as one-liners: <code>app.MapGet("/x", handler)</code>.</td></tr>
+      </table>
+    </section>
+
+    <!-- Quiz -->
+    <section id="quiz">
+      <h2>Quiz yourself</h2>
+      <p class="lead">A fresh set of <strong>15 random questions</strong> (drawn from a bank of 75) each round. Stuck? Reveal the hint. Aim to explain <em>why</em> out loud — that's the real interview skill.</p>
+      <div class="quiz-controls">
+        <button onclick="dealQuiz()">🎲 Deal 15 new questions</button>
+        <span class="prog" id="prog"></span>
+      </div>
+      <div class="live-score" id="score">Score: 0 / 0</div>
+      <div id="quiz"></div>
+      <div class="quiz-controls" style="margin-top:24px">
+        <button onclick="dealQuiz()">🎲 Deal another 15</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+function showAnalogy(btn, id) {
+  document.querySelectorAll('.toggle-row button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.analogy-panel').forEach(p => p.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+}
+
+// Scroll-spy for sidebar
+const links = [...document.querySelectorAll('nav.side a')];
+const sections = links.map(l => document.querySelector(l.getAttribute('href')));
+const spy = () => {
+  let cur = sections[0];
+  for (const s of sections) { if (s && s.getBoundingClientRect().top <= 120) cur = s; }
+  links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + (cur?.id)));
+};
+document.addEventListener('scroll', spy, { passive: true }); spy();
+
+// Quiz
+const questions = [
+  {
+    q: "In <code>var tier = new DoseTier { DoseMg = 150 };</code>, what is <code>tier</code>?",
+    opts: ["A class", "An object (instance)", "A method", "A namespace"],
+    correct: 1,
+    why: "DoseTier is the class (blueprint). `new DoseTier{…}` builds a real instance from it — that instance is the object, stored in `tier`."
+  },
+  {
+    q: "Why can you call <code>PlannerCalculator.IntervalDays(plan)</code> without writing <code>new PlannerCalculator()</code>?",
+    opts: ["It's a record", "It returns void", "It's a static class/method — it belongs to the class, not an object", "It's async"],
+    correct: 2,
+    why: "PlannerCalculator is a static class of stateless helpers. static members belong to the type itself, so no instance is needed."
+  },
+  {
+    q: "What does <code>{ get; set; }</code> on a property give you?",
+    opts: ["A private field only", "Auto-generated read + write access", "An async method", "A database column"],
+    correct: 1,
+    why: "It's an auto-property: the compiler generates a hidden getter and setter so you can read/write it like a variable."
+  },
+  {
+    q: "<code>store.Plans.Where(p =&gt; p.Id != id).ToList()</code> is the C# equivalent of which JS?",
+    opts: ["arr.map(...)", "arr.find(...)", "arr.filter(...)", "arr.reduce(...)"],
+    correct: 2,
+    why: "LINQ's Where = filter: it keeps only items matching the predicate. .ToList() runs the (lazy) query into a real list."
+  },
+  {
+    q: "In <code>public sealed class PlannerService(PlannerRepository repository)</code>, how does the repository get created?",
+    opts: ["PlannerService news it up itself", "It's a global variable", "The DI container injects the registered singleton", "It's read from SQLite"],
+    correct: 2,
+    why: "That's constructor injection. Because you called AddSingleton<PlannerRepository>() in Program.cs, .NET builds and supplies it automatically."
+  },
+  {
+    q: "What is <code>Task&lt;PlannerStore&gt;</code>?",
+    opts: ["A list of stores", "A promise that will produce a PlannerStore", "A database table", "A nullable store"],
+    correct: 1,
+    why: "Task<T> is C#'s Promise<T>. await it to get the PlannerStore once the async work (e.g. the DB read) finishes."
+  },
+  {
+    q: "<code>string? Type</code> in the TierCreate record — what does the <code>?</code> mean?",
+    opts: ["It's a boolean", "The value can be null (may be omitted)", "It's read-only", "It's a computed property"],
+    correct: 1,
+    why: "The ? makes the type nullable — the client may leave it out (null), which your handler treats differently from an empty string."
+  },
+  {
+    q: "Best interview reason to split Shots.Domain from Shots.Web?",
+    opts: ["It compiles faster", "Domain logic stays independent of web/DB — reusable and easy to unit-test", "Blazor requires it", "To have more files"],
+    correct: 1,
+    why: "Separation of concerns: pure logic doesn't depend on the delivery mechanism, so it's portable and testable in isolation."
+  },
+
+  // ── Classes / Objects / Methods ─────────────────────────────
+  { cat:"objects", q:"Which keyword actually builds an object from a class?", opts:["<code>class</code>","<code>new</code>","<code>static</code>","<code>void</code>"], correct:1, hint:"You write it right before the type name.", why:"<code>new DoseTier()</code> constructs a real object (instance) from the DoseTier blueprint." },
+  { cat:"objects", q:"How many objects can you create from a single class?", opts:["Exactly one","As many as you want","Zero","Two"], correct:1, hint:"Think cookie cutter → cookies.", why:"A class is a reusable blueprint — you can stamp out unlimited independent objects from it." },
+  { cat:"objects", q:"In <code>plan.Tiers.Add(tier)</code>, what is <code>Add</code>?", opts:["A class","A property","A method","A namespace"], correct:2, hint:"You can put () after it and it DOES something.", why:"Add is a method on the Tiers list object — it performs an action (appending an item)." },
+  { cat:"objects", q:"Two PeptidePlan objects each store their own PeptideName. That data is…", opts:["Shared across all plans","Per-instance state (unique to each object)","Static","A constant"], correct:1, hint:"Each cake baked from the recipe can have different frosting.", why:"Instance fields/properties belong to each individual object, so every plan holds its own values." },
+  { cat:"objects", q:"A constructor's job is to…", opts:["Delete an object","Initialize a new object when it's created","Compile the code","Define a route"], correct:1, hint:"It runs at 'birth' — during <code>new</code>.", why:"A constructor sets up an object's starting state at the moment it's created." },
+  { cat:"objects", q:"In C#, every function must live…", opts:["In a separate file","Inside a class or type","In the Program.cs","In a namespace directly"], correct:1, hint:"That's why C# people say 'method'.", why:"C# has no free-floating functions — every method belongs to a type. That's why 'method' and 'function' blur together." },
+  { cat:"objects", q:"A return type of <code>void</code> means the method…", opts:["Returns null","Returns nothing","Returns a Task","Can't be called"], correct:1, hint:"Void = empty.", why:"<code>void</code> means the method does work but hands back no value." },
+  { cat:"objects", q:"Inside an instance method, <code>this</code> refers to…", opts:["The class blueprint","The current object the method was called on","A static field","The namespace"], correct:1, hint:"'This particular cake.'", why:"<code>this</code> is the specific object instance the method is running on." },
+  { cat:"objects", q:"What best describes an 'instance'?", opts:["Another word for a class","A concrete object built from a class","A method parameter","A static helper"], correct:1, hint:"Instance = object.", why:"'Instance' and 'object' are synonyms — a concrete thing created from a class." },
+  { cat:"objects", q:"A <em>method</em> differs from a <em>property/field</em> because a method…", opts:["Stores a value","Runs a block of code when called","Is always static","Can't take inputs"], correct:1, hint:"One holds data, one performs an action.", why:"A method is executable behavior; a field/property is stored data." },
+
+  // ── new vs static ───────────────────────────────────────────
+  { cat:"new vs static", q:"Which should you NOT put <code>new</code> in front of?", opts:["<code>DoseTier</code>","<code>PeptidePlan</code>","<code>Math</code>","<code>List&lt;int&gt;</code>"], correct:2, hint:"It's a static toolbox.", why:"Math is a static class — you call <code>Math.Max(...)</code> directly and never instantiate it." },
+  { cat:"new vs static", q:"A <code>static</code> field is…", opts:["Unique to each object","Shared across all instances / the whole type","Always private","Never allowed"], correct:1, hint:"It belongs to the class, not a cake.", why:"Static members belong to the type itself, so there's one shared copy — not one per object." },
+  { cat:"new vs static", q:"Why is <code>PlannerCalculator</code> a static class in your app?", opts:["It's faster to type","It holds no per-object data — just calculations","Blazor requires it","It talks to the database"], correct:1, hint:"Does it need to remember anything of its own?", why:"It's stateless pure math, so there's nothing to instantiate — a shared toolbox of functions." },
+  { cat:"new vs static", q:"To call an <em>instance</em> method, you first need…", opts:["An object (create one with <code>new</code>)","Nothing — call it on the type","A static field","An interface"], correct:0, hint:"Instance = tied to a specific object.", why:"Instance members run on an object, so you must have one (via <code>new</code>) before calling them." },
+  { cat:"new vs static", q:"Writing <code>new PlannerCalculator()</code> (a static class) causes…", opts:["A runtime crash","A compile error","Nothing, it's fine","An empty object"], correct:1, hint:"The compiler stops you.", why:"You cannot instantiate a static class — the compiler rejects it before the app runs." },
+  { cat:"new vs static", q:"When should you pick <em>instance</em> over <em>static</em>?", opts:["When each copy needs its own data/state","When the code is short","Always","When it returns void"], correct:0, hint:"Per-object memory?", why:"If every copy must remember different information, it needs to be an instance." },
+  { cat:"new vs static", q:"<code>static class X</code> means…", opts:["X is private","All members are static and X can't be instantiated","X can't have methods","X is an interface"], correct:1, hint:"No objects, all shared.", why:"A static class holds only static members and can never be <code>new</code>-ed." },
+  { cat:"new vs static", q:"Constants like <code>Math.PI</code> are typically…", opts:["Instance fields","Static","Nullable","Records"], correct:1, hint:"One value for everyone.", why:"Shared, unchanging values live as static members so no object is needed to read them." },
+  { cat:"new vs static", q:"The one-line interview answer for instance vs static?", opts:["Static is always better","Instance = per-object state; static = stateless helpers/shared constants","They're identical","Instance is for the database"], correct:1, hint:"State vs no state.", why:"That crisp distinction — per-object state vs type-level stateless members — is exactly what interviewers want." },
+
+  // ── get / set / properties ──────────────────────────────────
+  { cat:"get/set", q:"Reading <code>plan.VialMg</code> runs the property's…", opts:["set","get","constructor","Task"], correct:1, hint:"Reading = getting.", why:"Reading a property invokes its <code>get</code> accessor." },
+  { cat:"get/set", q:"Inside a <code>set</code>, the keyword <code>value</code> is…", opts:["Always zero","The value being assigned to the property","The property name","A static field"], correct:1, hint:"It's the thing on the right of the <code>=</code>.", why:"<code>value</code> is the implicit parameter holding whatever was assigned." },
+  { cat:"get/set", q:"A property written <code>{ get; }</code> (no set) is…", opts:["Write-only","Read-only after construction","Static","Nullable"], correct:1, hint:"No setter = can't reassign later.", why:"With only a getter, it can be set once at creation and not changed afterward." },
+  { cat:"get/set", q:"Main advantage of a property over a plain public field?", opts:["It's shorter","You can add validation/logic later without changing callers","It uses less memory","It's automatically static"], correct:1, hint:"It's secretly methods.", why:"Because a property is get/set methods in disguise, you can add rules later and callers never change." },
+  { cat:"get/set", q:"An expression-bodied property like <code>ActivePlan =&gt; …</code> has…", opts:["Both get and set","Only a getter, computed each read","No accessors","A hidden field"], correct:1, hint:"It computes on the fly.", why:"<code>=&gt;</code> defines a getter-only property that recomputes its value every time it's read." },
+  { cat:"get/set", q:"<code>{ get; private set; }</code> means…", opts:["Nobody can read it","Anyone reads; only this class writes","It's static","It's read-only forever"], correct:1, hint:"Public read, restricted write.", why:"The setter is private, so only the declaring class can change it, while anyone can read it." },
+  { cat:"get/set", q:"For an auto-property <code>{ get; set; }</code>, the backing field is…", opts:["Written by you","Generated and hidden by the compiler","Stored in the database","Not created"], correct:1, hint:"You never see it.", why:"The compiler generates a private hidden field to store the value." },
+  { cat:"get/set", q:"<code>[JsonIgnore]</code> on <code>ActivePlan</code> tells the serializer to…", opts:["Encrypt it","Skip it in JSON output","Rename it","Make it required"], correct:1, hint:"It's derived, not real data.", why:"The attribute excludes the computed property from serialized JSON." },
+  { cat:"get/set", q:"<code>{ get; init; }</code> allows setting the value…", opts:["Anytime","Only during object initialization, then locked","Never","Only from the database"], correct:1, hint:"Set once, at birth.", why:"<code>init</code> setters accept a value during <code>new X { … }</code> and become read-only afterward." },
+
+  // ── async / await / Task ────────────────────────────────────
+  { cat:"async/task", q:"<code>Task&lt;T&gt;</code> is most like which JavaScript type?", opts:["Array&lt;T&gt;","Promise&lt;T&gt;","Map","Set"], correct:1, hint:"Async 'I'll get back to you.'", why:"Task<T> represents future work that will produce a T — exactly like a Promise<T>." },
+  { cat:"async/task", q:"<code>await</code> on a <code>Task&lt;PlannerStore&gt;</code> gives you…", opts:["A Task","A PlannerStore (unwrapped)","null","A list"], correct:1, hint:"It peels off the wrapper.", why:"<code>await</code> waits for completion and unwraps the Task to the inner PlannerStore." },
+  { cat:"async/task", q:"<code>await</code> on a plain <code>Task</code> (no &lt;T&gt;) gives you…", opts:["A number","Nothing — it just waits for completion","An error","A new Task"], correct:1, hint:"Empty box.", why:"A plain Task carries no result; awaiting it just means 'wait until it's done.'" },
+  { cat:"async/task", q:"A method that uses <code>await</code> inside must be marked…", opts:["<code>static</code>","<code>async</code>","<code>sealed</code>","<code>public</code>"], correct:1, hint:"They travel together.", why:"You can only use <code>await</code> inside an <code>async</code> method." },
+  { cat:"async/task", q:"The main benefit of async on a web server is…", opts:["Prettier code","Threads are freed to serve other requests while waiting","It skips the database","Fewer files"], correct:1, hint:"Throughput.", why:"While a request waits on I/O, its thread is released to handle others — so few threads serve many requests." },
+  { cat:"async/task", q:"If an awaited Task <em>faulted</em> (threw an exception), <code>await</code> will…", opts:["Return null","Re-throw the exception to your code","Silently ignore it","Retry forever"], correct:1, hint:"try/catch still works.", why:"The exception surfaces right at the <code>await</code>, so normal try/catch handles it." },
+  { cat:"async/task", q:"Forgetting the <code>await</code> means you're holding…", opts:["The result","The Task (the buzzer), not the result","A null","An exception"], correct:1, hint:"Buzzer vs coffee.", why:"Without await you keep the Task handle instead of the completed value — a classic bug." },
+  { cat:"async/task", q:"An async method that produces no value should return…", opts:["<code>void</code>","<code>Task</code>","<code>null</code>","<code>bool</code>"], correct:1, hint:"Not void (except event handlers).", why:"Return <code>Task</code> so callers can await it and observe completion/exceptions." },
+  { cat:"async/task", q:"<code>Task.WhenAll(a, b)</code> is the C# equivalent of…", opts:["<code>Promise.race</code>","<code>Promise.all</code>","<code>Array.map</code>","<code>setTimeout</code>"], correct:1, hint:"Wait for all to finish.", why:"WhenAll awaits multiple tasks running concurrently — like Promise.all." },
+  { cat:"async/task", q:"In <code>async Task&lt;T&gt; F()</code>, inside the body you <code>return</code> a…", opts:["Task&lt;T&gt;","plain T (the compiler wraps it)","void","Promise"], correct:1, hint:"async does the wrapping.", why:"You return a bare T; <code>async</code> automatically wraps it in a Task<T> for the caller." },
+  { cat:"async/task", q:"A Task in the <em>Faulted</em> state means…", opts:["It's still running","The work threw an exception","It finished successfully","It was never started"], correct:1, hint:"Something went wrong.", why:"Faulted = the operation completed by throwing; awaiting it re-throws that exception." },
+  { cat:"async/task", q:"<code>await _gate.WaitAsync()</code> in your code means…", opts:["Sleep 1 second","Wait to acquire the lock without freezing the thread","Open the database","Start a new task pool"], correct:1, hint:"It's an async lock.", why:"It asynchronously waits until this code holds the semaphore (exclusive access), keeping the thread free meanwhile." },
+  { cat:"async/task", q:"Blocking on I/O (instead of awaiting) is bad because…", opts:["It's illegal","A thread sits frozen doing nothing, hurting scalability","It deletes data","It's slower to type"], correct:1, hint:"Wasted thread.", why:"A blocked thread can't serve other work, so under load the server runs out of threads." },
+
+  // ── Dependency Injection ────────────────────────────────────
+  { cat:"DI", q:"Constructor injection means a class gets its dependencies…", opts:["By creating them with <code>new</code>","Passed into its constructor by the framework","From global variables","From the database"], correct:1, hint:"'Ask, don't build.'", why:"The class declares what it needs as constructor parameters, and the DI container supplies them." },
+  { cat:"DI", q:"<code>AddSingleton&lt;T&gt;()</code> registers…", opts:["A new instance per call","One shared instance for the app's lifetime","One per request","A static class"], correct:1, hint:"One, forever.", why:"Singleton = a single shared instance reused everywhere for the whole app." },
+  { cat:"DI", q:"<code>AddScoped&lt;T&gt;()</code> gives you…", opts:["One instance per web request","One forever","A new one every call","A static field"], correct:0, hint:"Per request.", why:"Scoped services live for the duration of a single HTTP request." },
+  { cat:"DI", q:"<code>AddTransient&lt;T&gt;()</code> gives you…", opts:["One forever","A brand-new instance every time it's requested","One per request","Nothing"], correct:1, hint:"Fresh each time.", why:"Transient services are created anew on every resolution." },
+  { cat:"DI", q:"The biggest testing benefit of DI is…", opts:["Faster compiles","You can inject fake/mock dependencies in tests","Smaller files","No need for types"], correct:1, hint:"Swap the real thing for a stand-in.", why:"Because dependencies are supplied from outside, tests can inject fakes to isolate the class." },
+  { cat:"DI", q:"In <code>MapGet(\"/state\", async (PlannerService svc) =&gt; …)</code>, where does <code>svc</code> come from?", opts:["A global","The DI container injects it","You <code>new</code> it inline","The URL"], correct:1, hint:"You registered it in Program.cs.", why:".NET sees the parameter type and injects the registered PlannerService automatically." },
+  { cat:"DI", q:"DI primarily helps you achieve…", opts:["Loose coupling between classes","Faster math","Smaller downloads","More inheritance"], correct:0, hint:"Classes don't hard-wire their collaborators.", why:"Depending on supplied abstractions instead of building concretes keeps classes loosely coupled." },
+  { cat:"DI", q:"In your app, where are services registered?", opts:["In each endpoint","In <code>Program.cs</code> via <code>builder.Services</code>","In the .csproj","In the database"], correct:1, hint:"The startup file.", why:"Registration happens once at startup in Program.cs on <code>builder.Services</code>." },
+  { cat:"DI", q:"Without DI, a class usually…", opts:["Won't compile","News up its own dependencies (tighter coupling)","Runs faster","Has no methods"], correct:1, hint:"It builds its own collaborators.", why:"Self-constructing dependencies hard-wires classes together, making them harder to swap or test." },
+
+  // ── sealed / modifiers / records / interfaces ───────────────
+  { cat:"sealed", q:"<code>sealed</code> on a class means…", opts:["It's private","No other class can inherit from it","It can't have methods","It's static"], correct:1, hint:"Locks the door to subclassing.", why:"A sealed class cannot be used as a base class — nobody can extend it." },
+  { cat:"sealed", q:"Why seal your data-model classes (like DoseTier)?", opts:["It's required by C#","No intent to subclass — states intent + minor perf gains","To make them static","To allow inheritance"], correct:1, hint:"They're not designed to be extended.", why:"Sealing communicates 'not meant for inheritance,' prevents accidents, and can enable runtime optimizations." },
+  { cat:"sealed", q:"The concept <code>sealed</code> shuts off is…", opts:["Serialization","Inheritance (subclassing)","Async","Injection"], correct:1, hint:"Base class → derived class.", why:"Inheritance lets one class extend another; sealed forbids that for this class." },
+  { cat:"sealed", q:"<code>public</code> vs <code>private</code> on a member controls…", opts:["Its speed","Who is allowed to access it","Whether it's async","Its return type"], correct:1, hint:"Visibility.", why:"Access modifiers set who can see/use a member (everyone vs only this class)." },
+  { cat:"sealed", q:"An interface (e.g. <code>IResult</code>) defines…", opts:["A concrete implementation","A contract of members with no implementation","A database table","A static helper"], correct:1, hint:"A promise of methods, no bodies.", why:"An interface lists members a type must provide, without saying how." },
+  { cat:"sealed", q:"The <code>I</code> prefix in <code>IEndpointRouteBuilder</code> marks…", opts:["An integer","An interface (naming convention)","An instance","An import"], correct:1, hint:"C# naming convention.", why:"By convention, interface names start with a capital <code>I</code>." },
+  { cat:"records", q:"A <code>record</code> is best suited for…", opts:["Long-running services","Immutable data carriers (DTOs)","Static helpers","Database connections"], correct:1, hint:"Bags of values that don't change.", why:"Records give concise, value-equal, immutable-friendly data types — ideal for DTOs like PlanUpdate." },
+  { cat:"records", q:"Two records with identical field values are considered…", opts:["Never equal","Equal (value-based equality)","Equal only if same reference","A compile error"], correct:1, hint:"Compares contents, not identity.", why:"Records implement value equality: same values ⇒ equal." },
+  { cat:"records", q:"Two <em>class</em> instances with identical fields are, by default…", opts:["Equal","Not equal unless they're the same reference","Always equal","Records"], correct:1, hint:"Identity, not contents.", why:"Classes use reference equality by default — only the same object in memory is 'equal.'" },
+  { cat:"records", q:"<code>internal</code> access means a type is visible…", opts:["Everywhere","Only within the same project/assembly","Only to subclasses","Only in tests"], correct:1, hint:"Assembly boundary.", why:"<code>internal</code> limits visibility to the same compiled assembly/project." },
+
+  // ── null-safety ─────────────────────────────────────────────
+  { cat:"null", q:"<code>int?</code> means…", opts:["A big int","An int, or null","Always null","A list of ints"], correct:1, hint:"The ? adds 'or nothing.'", why:"The ? makes a value type nullable — it can hold an int or be null." },
+  { cat:"null", q:"<code>a ?? b</code> evaluates to…", opts:["Always b","a, unless a is null (then b)","a plus b","true/false"], correct:1, hint:"Fallback operator.", why:"The null-coalescing operator returns a unless it's null, in which case b." },
+  { cat:"null", q:"<code>x?.Name</code> (null-conditional) returns null when…", opts:["Name is empty","x is null","x is not null","Always"], correct:1, hint:"Short-circuits on null.", why:"If x is null the whole expression is null instead of throwing — otherwise it reads Name." },
+  { cat:"null", q:"<code>plan is null</code> is true when…", opts:["plan is empty string","plan holds no object (is null)","plan has 0 tiers","never"], correct:1, hint:"Literally a null check.", why:"It's a clean way to test whether the reference is null." },
+  { cat:"null", q:"Why does C# push null-handling to compile time?", opts:["To slow you down","To catch null-reference bugs before users hit them","For smaller files","It doesn't"], correct:1, hint:"The #1 runtime crash.", why:"Nullable rules surface potential null bugs at compile time instead of as runtime crashes." },
+
+  // ── LINQ / collections ──────────────────────────────────────
+  { cat:"linq", q:"<code>FirstOrDefault(pred)</code> returns what when nothing matches?", opts:["Throws","null (the default)","The first item anyway","An empty list"], correct:1, hint:"'OrDefault' is the clue.", why:"Unlike First(), FirstOrDefault returns the type's default (null for objects) when no match exists." },
+  { cat:"linq", q:"LINQ's <code>Where(pred)</code> is like which JS method?", opts:["map","filter","reduce","find"], correct:1, hint:"Keeps matching items.", why:"Where keeps only elements matching the predicate — JavaScript's filter." },
+  { cat:"linq", q:"LINQ's <code>Select(x =&gt; …)</code> is like which JS method?", opts:["filter","map","some","sort"], correct:1, hint:"Transforms each item.", why:"Select projects/transforms each element — JavaScript's map." },
+  { cat:"linq", q:"<code>Any(pred)</code> returns…", opts:["The first match","A bool: does anything match?","A filtered list","A count"], correct:1, hint:"Yes/no question.", why:"Any returns true if at least one element satisfies the predicate — like JS some()." },
+  { cat:"linq", q:"Why call <code>.ToList()</code> at the end of a LINQ chain?", opts:["To sort it","To run the lazy query and freeze results into a real list","To delete items","It's required syntax"], correct:1, hint:"LINQ is lazy.", why:"LINQ queries are deferred; ToList() executes the query and materializes a concrete list." },
+
+  // ── API / project / general ─────────────────────────────────
+  { cat:"api", q:"<code>MapPost(\"/plans\", handler)</code> registers…", opts:["A GET route","A route that runs handler on POST /plans","A database table","A DI service"], correct:1, hint:"Verb + path → handler.", why:"It wires an HTTP POST to /plans to the given handler (Minimal API style)." },
+  { cat:"api", q:"The <code>{id}</code> in <code>/plans/{id}</code> is…", opts:["A comment","A route parameter filled from the URL","A query string","A header"], correct:1, hint:"Fill-in-the-blank in the path.", why:"It's a route parameter — the matching URL segment is passed to the handler as <code>id</code>." },
+  { cat:"api", q:"A <code>.csproj</code> project compiles to…", opts:["A database","One assembly (a .dll)","An HTML page","A namespace"], correct:1, hint:"The build output.", why:"Each project builds into a single assembly (.dll) the runtime loads." },
+  { cat:"api", q:"Why split <code>Shots.Domain</code> from <code>Shots.Web</code>?", opts:["Faster typing","Pure logic stays independent of web/DB — reusable and testable","Blazor demands it","No reason"], correct:1, hint:"Separation of concerns.", why:"Keeping domain logic free of delivery concerns makes it portable and easy to unit-test in isolation." }
+];
+
+// ── Quiz engine: deal 15 random questions from the bank ──────
+const quizEl = document.getElementById('quiz');
+const scoreEl = document.getElementById('score');
+const progEl = document.getElementById('prog');
+let answered = 0, right = 0, dealt = 0;
+
+function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function updateScore(){
+  const pct = dealt ? Math.round(right / dealt * 100) : 0;
+  scoreEl.textContent = `Score: ${right} / ${answered}` + (answered === dealt && dealt > 0 ? `  —  ${pct}% ${pct >= 80 ? "🎯" : pct >= 60 ? "👍" : "📚"}` : "");
+}
+
+function dealQuiz(){
+  answered = 0; right = 0;
+  const picks = shuffle(questions).slice(0, 15);
+  dealt = picks.length;
+  quizEl.innerHTML = "";
+  progEl.textContent = `Bank of ${questions.length} · showing ${dealt}`;
+  updateScore();
+
+  picks.forEach((item, qi) => {
+    const opts = shuffle(item.opts.map((text, i) => ({ text, correct: i === item.correct })));
+    const div = document.createElement('div');
+    div.className = 'quiz-q';
+    div.innerHTML = `<div class="qtext">${item.cat ? `<span class="cat">${item.cat}</span>` : ""}${qi + 1}. ${item.q}</div>`;
+
+    opts.forEach(o => {
+      const b = document.createElement('button');
+      b.className = 'opt'; b.innerHTML = o.text;
+      if (o.correct) b.dataset.correct = "1";
+      b.onclick = () => {
+        if (div.dataset.done) return;
+        div.dataset.done = "1"; answered++;
+        div.querySelectorAll('.opt').forEach(x => {
+          x.style.cursor = "default";
+          if (x.dataset.correct === "1") x.classList.add('correct');
+        });
+        if (o.correct) right++; else b.classList.add('wrong');
+        const ex = div.querySelector('.explain'); if (ex) ex.classList.add('show');
+        updateScore();
+      };
+      div.appendChild(b);
+    });
+
+    if (item.hint) {
+      const hb = document.createElement('button');
+      hb.className = 'hintbtn'; hb.textContent = '💡 Show hint';
+      const hint = document.createElement('div');
+      hint.className = 'hint'; hint.innerHTML = `<strong>Hint:</strong> ${item.hint}`;
+      hb.onclick = () => {
+        hint.classList.toggle('show');
+        hb.textContent = hint.classList.contains('show') ? '💡 Hide hint' : '💡 Show hint';
+      };
+      div.appendChild(hb); div.appendChild(hint);
+    }
+
+    const ex = document.createElement('div');
+    ex.className = 'explain'; ex.innerHTML = `<strong>Why:</strong> ${item.why}`;
+    div.appendChild(ex);
+    quizEl.appendChild(div);
+  });
+}
+
+dealQuiz();
+
+// ── Mock interview drills ────────────────────────────────────
+const drills = [
+  {
+    q: "Explain the difference between a class and an object, like I'm a junior dev.",
+    prompt: "They want to hear the mental model, not a textbook definition.",
+    say: "A class is a blueprint; an object is a real thing built from it. In my app, <code>PeptidePlan</code> is a class describing what any plan looks like — its name, dose, dates. When I write <code>new PeptidePlan()</code>, I create one actual plan object with its own values. One class, many independent objects.",
+    points: ["Class = blueprint/template, defined once.", "Object (instance) = a concrete thing made with <code>new</code>.", "Each object holds its own data (state)."],
+    followup: "\"And what's a method then?\" → \"A method is an action that lives on the class/object — like <code>plan.Tiers.Add(tier)</code>. You call it with a dot and it <em>does</em> something.\""
+  },
+  {
+    q: "Walk me through what happens when a request hits POST /api/plans/{id}/tiers.",
+    prompt: "A request-lifecycle question. Narrate the journey end to end.",
+    say: "ASP.NET matches the route and extracts <code>id</code> from the URL. It deserializes the JSON body into a <code>TierCreate</code> record and injects my <code>PlannerService</code>. My handler calls a helper that runs <code>MutateAsync</code>, which locks, loads the current state from SQLite, applies my change — adding the tier to the right plan — normalizes, and saves. If it succeeds I return 201 Created; if the plan isn't found, a <code>PlannerApiException</code> is caught and turned into a 404. Finally .NET serializes the result back to JSON.",
+    points: ["Route matching + binding the body to a record.", "DI supplies the service.", "Atomic load → mutate → save behind a lock.", "Result mapped to an HTTP status + JSON."],
+    followup: "\"Why the lock?\" → \"It's a single shared 'current' snapshot, so concurrent requests could clobber each other. A semaphore makes each load-modify-save atomic.\""
+  },
+  {
+    q: "What is dependency injection and why use it?",
+    prompt: "Bread-and-butter .NET question. Have a crisp definition + a payoff.",
+    say: "Instead of a class creating its own dependencies, it asks for them in its constructor and the framework supplies them. My <code>PlannerService</code> takes a <code>PlannerRepository</code> as a constructor parameter; I registered both in Program.cs with <code>AddSingleton</code>, so .NET wires them together. The payoff is loose coupling and testability — in a unit test I can inject a fake repository instead of hitting a real database.",
+    points: ["Definition: declare needs in the constructor; container provides them.", "Registered in Program.cs (<code>builder.Services</code>).", "Benefits: loose coupling + testable (inject fakes).", "Lifetimes: Singleton / Scoped / Transient."],
+    followup: "\"Difference between Singleton and Scoped?\" → \"Singleton is one instance for the whole app; Scoped is one per HTTP request; Transient is a new one every time.\""
+  },
+  {
+    q: "Explain async/await and why it matters on a web server.",
+    prompt: "Don't just say 'it's like Promises' — explain the throughput benefit.",
+    say: "A <code>Task</code> represents work that isn't finished yet — like a Promise in JS. <code>await</code> pauses my method until the Task completes and unwraps its result, but crucially it frees the thread while waiting. On a server that's about throughput: while one request waits on the database, its thread goes and serves other requests, so a handful of threads can handle thousands of concurrent requests instead of sitting blocked.",
+    points: ["Task = future result (Promise). <code>Task&lt;T&gt;</code> carries a value.", "<code>await</code> = wait + unwrap, without blocking the thread.", "Server benefit = scalability/throughput, not raw speed."],
+    followup: "\"What if the awaited work throws?\" → \"The exception is re-thrown at the await, so a normal try/catch around it works.\""
+  },
+  {
+    q: "When would you make something static versus an instance?",
+    prompt: "This is really 'do you understand state?' Answer with the state test.",
+    say: "It comes down to state. If each copy needs to remember its own data, it should be an instance — I create it with <code>new</code>. If it's just a stateless calculation or a shared constant, it can be static. In my app <code>PeptidePlan</code> is an instance class because every plan has its own name and dose, but <code>PlannerCalculator</code> is a static class of pure math — there's nothing to remember, so I never instantiate it.",
+    points: ["Instance = per-object state (needs <code>new</code>).", "Static = stateless helpers / shared constants (no <code>new</code>).", "Example pair from my code: PeptidePlan vs PlannerCalculator."],
+    followup: "\"What happens if you try to new up a static class?\" → \"Compile error — a static class can't be instantiated.\""
+  },
+  {
+    q: "What does { get; set; } actually do, and why not use a public field?",
+    prompt: "Show you know a property is methods in disguise.",
+    say: "A property looks like a variable but is really a pair of accessor methods — a getter that runs when you read it and a setter that runs when you assign, where <code>value</code> is the assigned value. The compiler generates a hidden backing field. The reason to prefer it over a public field is flexibility: because it's methods, I can later add validation, make the setter private, or compute the value — without changing any code that uses the property.",
+    points: ["Read runs <code>get</code>, write runs <code>set</code> (<code>value</code> = assigned).", "Compiler makes a hidden backing field.", "Can add logic later with zero caller changes."],
+    followup: "\"How would you make it read-only from outside?\" → \"<code>{ get; private set; }</code> — public read, only the class can write.\""
+  },
+  {
+    q: "What is 'sealed' and why are most of your classes sealed?",
+    prompt: "They're probing whether you understand inheritance and intent.",
+    say: "<code>sealed</code> means no other class can inherit from this one. Most of my classes are data models and services that were never designed to be subclassed, so sealing them states that intent, prevents accidental inheritance, and can even let the runtime optimize method dispatch. I treat it as a sensible default unless I'm deliberately designing a type for extension.",
+    points: ["sealed = can't be inherited/subclassed.", "Communicates intent + prevents accidents.", "Minor performance benefit; good default for models."],
+    followup: "\"So when would you NOT seal?\" → \"When I'm intentionally building a base class meant to be extended and overridden.\""
+  },
+  {
+    q: "You came from React/JavaScript — what was the hardest part of learning C#?",
+    prompt: "A behavioral question. Be honest, then flip it into growth.",
+    say: "The biggest shift was that C# is strongly typed and compiled. A lot of bugs I used to hit at runtime in JavaScript now show up at compile time — which felt strict at first but I've come to appreciate. Getting comfortable with types, <code>Task&lt;T&gt;</code> for async, and dependency injection was the real learning curve. Converting my own React app to C# and Blazor was how it clicked, because I could map each concept I already knew onto the C# equivalent.",
+    points: ["Honest: typing + compilation was the adjustment.", "Frame it as a benefit (bugs caught early).", "Show initiative: you built a real project to learn."],
+    followup: "\"What do you like better about C#?\" → \"The safety net — the compiler and types catch whole categories of mistakes before the app ever runs.\""
+  },
+  {
+    q: "What's the difference between an interface and a class?",
+    prompt: "Keep it concrete — a contract vs an implementation.",
+    say: "An interface is a contract — it lists methods and properties a type must provide, but with no implementation. A class provides the actual code. A class can implement an interface to promise it fulfills that contract. The value is that my code can depend on the interface — like ASP.NET's <code>IResult</code> — instead of a specific class, which makes implementations swappable and easy to fake in tests.",
+    points: ["Interface = contract, no implementation (I-prefix convention).", "Class = the real implementation.", "Depend on the interface → swappable + testable."],
+    followup: "\"How does this relate to DI?\" → \"I can register an interface and inject different implementations — the real one in production, a fake in tests.\""
+  },
+  {
+    q: "Explain the difference between a record and a class.",
+    prompt: "You used both — records for your API DTOs.",
+    say: "A record is a class optimized for holding immutable data, with concise syntax and value-based equality built in. A regular class is for things with changing state and behavior, and uses reference equality by default. I used records like <code>TierCreate</code> and <code>PlanUpdate</code> for my API request bodies because they're just data carriers — one line declares all the properties and a constructor — while <code>PeptidePlan</code> is a class because it has mutable state.",
+    points: ["record = concise, immutable-friendly, value equality → great for DTOs.", "class = mutable state + behavior, reference equality.", "Concrete example from my code (TierCreate vs PeptidePlan)."],
+    followup: "\"What does value equality mean?\" → \"Two records with the same field values are considered equal, regardless of whether they're the same object in memory.\""
+  },
+  {
+    q: "How is your solution structured, and why?",
+    prompt: "Architecture question — show you think about separation of concerns.",
+    say: "It's one solution with three projects. <code>Shots.Domain</code> holds pure logic — models and calculations — with no dependency on the web or database. <code>Shots.Web</code> is the ASP.NET app: the API endpoints, Blazor UI, and SQLite persistence. And <code>Shots.Domain.Tests</code> unit-tests the domain. I split them so the core logic stays independent of the delivery mechanism — I could reuse the domain in a console or mobile app, and it's trivial to test in isolation because it has no web or DB dependencies.",
+    points: ["3 projects: Domain (logic), Web (delivery), Tests.", "Domain depends on nothing external → portable + testable.", "This is 'separation of concerns.'"],
+    followup: "\"Where does business logic go?\" → \"In the Domain project — the Web project just handles HTTP and hands work to the domain.\""
+  },
+  {
+    q: "What's the difference between IEnumerable<T> and List<T>?",
+    prompt: "Common follow-up that separates confident candidates. Keep it simple.",
+    say: "<code>List&lt;T&gt;</code> is a concrete, in-memory collection you can index and add to. <code>IEnumerable&lt;T&gt;</code> is a more abstract contract that just says 'you can iterate over this' — it might be lazily evaluated, like an unexecuted LINQ query. I return <code>List</code> when I need a materialized collection, and lean on <code>IEnumerable</code> when I just need to loop or chain LINQ. Calling <code>.ToList()</code> forces an IEnumerable into a real list.",
+    points: ["List = concrete, indexable, mutable, in memory.", "IEnumerable = 'iterable' contract, possibly lazy.", "<code>.ToList()</code> materializes it."],
+    followup: "\"Why does LINQ return IEnumerable?\" → \"Because queries are lazy — nothing runs until you enumerate, which lets you chain efficiently.\""
+  }
+];
+
+const drillsList = document.getElementById('drills-list');
+drills.forEach((d, i) => {
+  const div = document.createElement('div');
+  div.className = 'drill';
+  const pts = d.points.map(p => `<li>${p}</li>`).join("");
+  div.innerHTML =
+    `<div class="q"><span class="n">Q${i + 1}.</span>${d.q}</div>` +
+    `<div class="prompt">${d.prompt}</div>` +
+    `<button class="reveal">🎤 I answered — reveal model answer</button>` +
+    `<div class="answer">` +
+      `<div class="sayit"><span class="lbl">Say something like</span>${d.say}</div>` +
+      `<strong>Key points to hit:</strong><ul>${pts}</ul>` +
+      `<div class="followup"><b>Likely follow-up:</b> ${d.followup}</div>` +
+    `</div>`;
+  const btn = div.querySelector('.reveal');
+  const ans = div.querySelector('.answer');
+  btn.onclick = () => {
+    ans.classList.toggle('show');
+    btn.textContent = ans.classList.contains('show') ? '🙈 Hide answer' : '🎤 I answered — reveal model answer';
+  };
+  drillsList.appendChild(div);
+});
+
+function toggleAllDrills() {
+  const answers = [...document.querySelectorAll('.drill .answer')];
+  const anyHidden = answers.some(a => !a.classList.contains('show'));
+  answers.forEach(a => {
+    a.classList.toggle('show', anyHidden);
+    const btn = a.parentElement.querySelector('.reveal');
+    btn.textContent = anyHidden ? '🙈 Hide answer' : '🎤 I answered — reveal model answer';
+  });
+  document.getElementById('drillToggle').textContent = anyHidden ? 'Hide all answers' : 'Reveal all answers';
+}
+</script>
+</body>
+</html>

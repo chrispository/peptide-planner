@@ -20,6 +20,7 @@ import {
   computePlan,
   computeAll,
   mergeSchedule,
+  analyzeCartridge,
   summarizeDoses,
   tierScheduleCount,
 } from "./calc.js";
@@ -38,6 +39,21 @@ const escapeHtml = (value) =>
       "'": "&#39;",
     }[char]
   ));
+
+function cartridgeNoteText(cartridge, bacWindowDays) {
+  const summaries = cartridge?.phaseSummaries || [];
+  if (summaries.length === 0) {
+    return "";
+  }
+  const parts = summaries.slice(0, 4).map((summary) => {
+    const doseLabel = `${mg(summary.doseMg)} mg`;
+    const volumeLabel = `uses ${formatNumber(summary.mlWithinWindow, 1)} mL${summary.fullCartridgeWithinWindow ? " (full cartridge)" : ""}`;
+    return `Phase ${summary.phaseNumber} (${doseLabel}) ${volumeLabel}`;
+  });
+  const more = summaries.length > parts.length ? `; ${summaries.length - parts.length} more` : "";
+  return `3 mL cartridge over ${bacWindowDays}-day BAC window: ${parts.join("; ")}${more}.`;
+}
+
 const iconX = `
   <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M18 6 6 18" />
@@ -69,6 +85,7 @@ const el = {
   recommendedMl: $("recommendedMl"),
   recommendedSummary: $("recommendedSummary"),
   recommendedPerWeek: $("recommendedPerWeek"),
+  cartridgeNote: $("cartridgeNote"),
   recommendedUnits: $("recommendedUnits"),
   vialLasts: $("vialLasts"),
   totalShots: $("totalShots"),
@@ -442,13 +459,14 @@ function renderRecon(store, plan) {
   const distinctDoses = [...new Set(result.doses.map((d) => d.doseMg))].sort((a, b) => a - b);
   const mgPerWeek = distinctDoses.map((dose) => dose * dpw);
   const unitsPerWeek = distinctDoses.map((dose) => (dose / r.concentration) * 100 * dpw);
+  const cartridge = analyzeCartridge(result, prefs.bacWindowDays);
 
   el.recommendedMl.textContent = `${formatNumber(r.ml, 1)} mL`;
   el.recommendedUnits.textContent = formatRange(r.unitsByDose);
-  el.recommendedSummary.textContent =
-    `Add ${formatNumber(r.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"} for ${summarizeDoses(result.doses, mg)}.`;
+  el.recommendedSummary.textContent = `Add ${formatNumber(r.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"}.`;
   el.recommendedPerWeek.textContent =
     `≈ ${formatRange(mgPerWeek, 3)} mg / week · ${formatRange(unitsPerWeek, 0)} units / week (${formatNumber(dpw, 1)}x weekly)`;
+  el.cartridgeNote.textContent = cartridgeNoteText(cartridge, prefs.bacWindowDays);
   el.vialLasts.textContent = `${formatNumber(result.vialDurationDays, 0)} days`;
   el.totalShots.textContent = formatNumber(result.doses.length, 0);
   el.concentration.textContent = `${formatNumber(r.concentration, 1)} mg/mL`;
