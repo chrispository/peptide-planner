@@ -815,6 +815,78 @@ input[type="checkbox"] {
   line-height: 1;
 }
 
+.hero-ml {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.hero-ml-input {
+  width: 2.6em;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: clamp(34px, 6vw, 50px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  line-height: 1;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.hero-ml-input::-webkit-outer-spin-button,
+.hero-ml-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.hero-ml-input:hover:not(:disabled) {
+  border-color: var(--color-border);
+}
+
+.hero-ml-input:focus {
+  outline: none;
+  border-color: var(--color-border-strong);
+  background: var(--color-panel);
+}
+
+.hero-ml-input:disabled {
+  opacity: 0.5;
+}
+
+.hero-ml-unit {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: clamp(20px, 3.5vw, 28px);
+  font-weight: 500;
+}
+
+.hero-ml-reset {
+  align-self: center;
+  padding: 3px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.hero-ml-reset:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
 .hero-result p:not(.eyebrow) {
   max-width: 40ch;
   color: var(--color-text-muted);

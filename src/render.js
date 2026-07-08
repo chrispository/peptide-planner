@@ -68,6 +68,7 @@ const el = {
   phaseSuggestion: $("phaseSuggestion"),
   // recon outputs
   recommendedMl: $("recommendedMl"),
+  resetMlBtn: $("resetMlBtn"),
   recommendedSummary: $("recommendedSummary"),
   recommendedPerWeek: $("recommendedPerWeek"),
   recommendedUnits: $("recommendedUnits"),
@@ -295,7 +296,11 @@ function renderPlanChips(store) {
 // ---- Reconstitution results ----------------------------------------------
 
 function renderReconEmpty(message) {
-  el.recommendedMl.textContent = "-";
+  el.recommendedMl.disabled = true;
+  if (document.activeElement !== el.recommendedMl) {
+    el.recommendedMl.value = "";
+  }
+  el.resetMlBtn.classList.add("hidden");
   el.recommendedUnits.textContent = "-";
   el.recommendedSummary.textContent = message;
   el.recommendedPerWeek.textContent = "";
@@ -444,9 +449,15 @@ function renderRecon(store, plan) {
   const mgPerWeek = distinctDoses.map((dose) => dose * dpw);
   const unitsPerWeek = distinctDoses.map((dose) => (dose / r.concentration) * 100 * dpw);
 
-  el.recommendedMl.textContent = `${formatNumber(r.ml, 1)} mL`;
+  el.recommendedMl.disabled = false;
+  // Don't stomp what the user is mid-way through typing into the field.
+  if (document.activeElement !== el.recommendedMl) {
+    el.recommendedMl.value = r.overridden ? String(r.ml) : formatNumber(r.ml, 1);
+  }
+  el.resetMlBtn.classList.toggle("hidden", !r.overridden);
+  const overMax = r.maxUnits > 100 ? " Warning: this exceeds a 100-unit syringe." : "";
   el.recommendedUnits.textContent = formatRange(r.unitsByDose);
-  el.recommendedSummary.textContent = `Add ${formatNumber(r.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"}.`;
+  el.recommendedSummary.textContent = `Add ${formatNumber(r.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"}.${overMax}`;
   el.recommendedPerWeek.textContent =
     `≈ ${formatRange(mgPerWeek, 3)} mg / week · ${formatRange(unitsPerWeek, 0)} units / week (${formatNumber(dpw, 1)}x weekly)`;
   el.vialLasts.textContent = `${formatNumber(result.vialDurationDays, 0)} days`;

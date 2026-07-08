@@ -140,25 +140,21 @@ export function buildDosePlan(plan) {
   return { doses, totalMg, vialsNeeded, firstVialDoses, lastVialLeftover: unusedAcrossOpenedVials, cleanupSuggestions };
 }
 
-// Score candidate BAC water volumes by how close the typical shot lands to the
-// preferred syringe size, penalising over-full syringes, tiny draws, and unit
-// counts that are hard to measure. Lower score is better.
-export function buildWaterOptions(vialMg, doses, prefs) {
+// Derive everything about one candidate water volume: concentration, the units
+// each dose draws, and a score for how easily it measures. `prefs` is optional —
+// without it the score is 0, which is fine for a user-forced override where the
+// volume is chosen, not ranked. Lower score is better.
+export function evaluateWaterOption(vialMg, doses, ml, prefs) {
   const doseMgs = doses.map((dose) => dose.doseMg);
   const maxDoseMg = Math.max(...doseMgs);
-  const options = [];
+  const concentration = vialMg / ml;
+  const unitsByDose = doseMgs.map((mg) => (mg / concentration) * 100);
+  const maxUnits = Math.max(...unitsByDose);
+  const minUnits = Math.min(...unitsByDose);
+  const typicalUnits = (maxDoseMg / concentration) * 100;
 
-  for (let ml = 0.5; ml <= 10.0001; ml += 0.5) {
-    const concentration = vialMg / ml;
-    const unitsByDose = doseMgs.map((mg) => (mg / concentration) * 100);
-    const maxUnits = Math.max(...unitsByDose);
-    const minUnits = Math.min(...unitsByDose);
-
-    if (maxUnits > 100 || minUnits < 2) {
-      continue;
-    }
-
-    const typicalUnits = (maxDoseMg / concentration) * 100;
+  let score = 0;
+  if (prefs) {
     const highVolumePenalty = maxUnits > prefs.maxUnits ? (maxUnits - prefs.maxUnits) * 3.5 : 0;
     const tinyPenalty = minUnits < 10 ? (10 - minUnits) * 1.5 : 0;
     const wholeUnitPenalty = unitsByDose.reduce((total, units) => total + Math.abs(units - Math.round(units)) * 36, 0);
@@ -166,10 +162,25 @@ export function buildWaterOptions(vialMg, doses, prefs) {
       (total, units) => total + Math.abs(units - Math.round(units / 5) * 5) * 0.05,
       0,
     );
-    const score =
+    score =
       Math.abs(typicalUnits - prefs.idealUnits) + highVolumePenalty + tinyPenalty + wholeUnitPenalty + fiveUnitPenalty;
+  }
 
-    options.push({ ml, concentration, unitsByDose, maxUnits, minUnits, typicalUnits, score });
+  return { ml, concentration, unitsByDose, maxUnits, minUnits, typicalUnits, score };
+}
+
+// Score candidate BAC water volumes by how close the typical shot lands to the
+// preferred syringe size, penalising over-full syringes, tiny draws, and unit
+// counts that are hard to measure. Lower score is better.
+export function buildWaterOptions(vialMg, doses, prefs) {
+  const options = [];
+
+  for (let ml = 0.5; ml <= 10.0001; ml += 0.5) {
+    const option = evaluateWaterOption(vialMg, doses, ml, prefs);
+    if (option.maxUnits > 100 || option.minUnits < 2) {
+      continue;
+    }
+    options.push(option);
   }
 
   return options.sort((a, b) => a.score - b.score || a.ml - b.ml);
@@ -291,8 +302,21 @@ export function computePlan(plan, prefs) {
 
   const interval = intervalDays(plan);
   const options = buildWaterOptions(vialMg, doses, prefs);
+  const overrideMl = Number.isFinite(plan.waterMlOverride) && plan.waterMlOverride > 0 ? plan.waterMlOverride : null;
   let recommended = null;
-  if (plan.flexibleDose && cleanupSuggestions.length > 0) {
+
+  if (overrideMl != null) {
+    // The user pinned the water volume; honour it verbatim (even if it pushes a
+    // shot past 100 units) rather than letting the scorer pick.
+    const candidateDoses = cloneDoses(doses);
+    const candidate = { ...evaluateWaterOption(vialMg, candidateDoses, overrideMl, prefs), overridden: true };
+    candidate.unitsByDose = [...candidate.unitsByDose];
+    if (plan.flexibleDose && cleanupSuggestions.length > 0) {
+      applyWholeUnitCleanup(candidateDoses, cleanupSuggestions, vialMg, candidate, flexibleRatio);
+    }
+    doses = candidateDoses;
+    recommended = candidate;
+  } else if (plan.flexibleDose && cleanupSuggestions.length > 0) {
     for (const option of options) {
       const candidateDoses = cloneDoses(doses);
       const candidate = { ...option, unitsByDose: [...option.unitsByDose] };

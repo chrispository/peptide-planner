@@ -42,6 +42,7 @@ export function createPlan(overrides = {}) {
     everyDays: 3,
     flexibleDose: false,
     flexibleDosePct: 10,
+    waterMlOverride: null, // null = use the auto-recommended volume
     tiers: [{ type: "dose", weeks: 2.5, count: 5, doseMg: 100 }],
     ...overrides,
   };
@@ -144,6 +145,8 @@ export function hydrate(store, payload) {
   store.plans = payload.plans.map((raw) => {
     const plan = { ...createPlan(), ...raw, id: raw.id || uid() };
     plan.tiers = normalizeTiers(raw.tiers, plan);
+    const override = num(raw.waterMlOverride, NaN);
+    plan.waterMlOverride = Number.isFinite(override) && override > 0 ? clamp(override, 0.1, 20) : null;
     return plan;
   });
   store.activePlanId = store.plans.some((plan) => plan.id === payload.activePlanId)

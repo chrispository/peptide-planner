@@ -160,6 +160,30 @@ form.addEventListener("change", (event) => {
   }
 });
 
+// The reconstitution mL lives in the results panel, not the planner form, so it
+// gets its own handler. A blank/invalid entry clears the override (back to auto).
+document.getElementById("recommendedMl").addEventListener("input", (event) => {
+  const plan = getActivePlan(store);
+  if (!plan) {
+    return;
+  }
+  const raw = event.target.value.trim();
+  const parsed = num(raw, NaN);
+  plan.waterMlOverride = raw === "" || !Number.isFinite(parsed) || parsed <= 0 ? null : Math.max(0.1, parsed);
+  renderOutputs(store);
+  persistence.scheduleSave();
+});
+
+document.getElementById("resetMlBtn").addEventListener("click", () => {
+  const plan = getActivePlan(store);
+  if (!plan) {
+    return;
+  }
+  plan.waterMlOverride = null;
+  renderOutputs(store);
+  persistence.scheduleSave();
+});
+
 document.getElementById("tierList").addEventListener("click", (event) => {
   const removeButton = event.target.closest(".tier-remove");
   const plan = getActivePlan(store);
