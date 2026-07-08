@@ -118,30 +118,17 @@
               <h2>Schedule</h2>
             </div>
 
-            <div class="segmented" role="tablist" aria-label="Schedule type">
-              <button class="segmented-button active" type="button" data-mode="weekly">Per week</button>
-              <button class="segmented-button" type="button" data-mode="interval">Every N days</button>
-            </div>
-
             <div class="grid-2">
               <label class="field">
                 <span>Start date</span>
                 <input id="startDate" type="date" />
-              </label>
-              <label class="field schedule-field" data-for="weekly">
-                <span>Shots per week</span>
-                <input id="shotsPerWeek" type="number" min="0.1" step="0.1" value="2" />
-              </label>
-              <label class="field schedule-field hidden" data-for="interval">
-                <span>Every N days</span>
-                <input id="everyDays" type="number" min="1" step="1" value="3" />
               </label>
             </div>
 
             <div class="section-heading compact">
               <div>
                 <h2>Dose phases</h2>
-                <p>Use weeks for weekly schedules, or shot counts for every-N-days schedules.</p>
+                <p>Set cadence, duration, dose, and cleanup behavior for each phase.</p>
               </div>
             </div>
             <div class="phase-actions">
@@ -162,17 +149,6 @@
             </div>
 
             <div class="tier-list" id="tierList"></div>
-            <label class="toggle-field">
-              <input id="flexibleDose" type="checkbox" />
-              <span>
-                <strong>Flexible dose</strong>
-                <small>Allow optional dose adjustments to finish opened vials cleanly.</small>
-              </span>
-              <span class="toggle-number">
-                <small>Max Adjustment %</small>
-                <input id="flexibleDosePct" type="number" min="1" max="100" step="1" value="10" />
-              </span>
-            </label>
             <div class="phase-summary">
               <div class="phase-summary-row">
                 <span>Last shot</span>
@@ -240,6 +216,7 @@
                     <span class="hero-ml-unit">mL</span>
                     <button id="resetMlBtn" class="hero-ml-reset hidden" type="button">Auto</button>
                   </div>
+                  <div id="recommendedPhaseList" class="phase-recon-list hidden"></div>
                   <p id="recommendedSummary">Add 3.0 mL BAC water to the vial.</p>
                   <p class="hero-perweek" id="recommendedPerWeek"></p>
                 </div>

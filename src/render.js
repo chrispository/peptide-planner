@@ -13,9 +13,10 @@ import {
   daysBetween,
 } from "./format.js";
 import {
-  intervalDays,
-  dosesPerWeek,
   scheduleLabel,
+  tierDosesPerWeek,
+  tierIntervalDays,
+  tierScheduleLabel,
   tierDoseCount,
   computePlan,
   computeAll,
@@ -55,10 +56,6 @@ const el = {
   peptideOptions: $("peptideOptions"),
   vialMg: $("vialMg"),
   startDate: $("startDate"),
-  shotsPerWeek: $("shotsPerWeek"),
-  everyDays: $("everyDays"),
-  flexibleDose: $("flexibleDose"),
-  flexibleDosePct: $("flexibleDosePct"),
   peptideNote: $("peptideNote"),
   tierList: $("tierList"),
   phaseLastShot: $("phaseLastShot"),
@@ -68,6 +65,7 @@ const el = {
   phaseSuggestion: $("phaseSuggestion"),
   // recon outputs
   recommendedMl: $("recommendedMl"),
+  recommendedPhaseList: $("recommendedPhaseList"),
   resetMlBtn: $("resetMlBtn"),
   recommendedSummary: $("recommendedSummary"),
   recommendedPerWeek: $("recommendedPerWeek"),
@@ -140,24 +138,11 @@ export function writeFormValues(plan) {
   el.peptideName.value = plan.peptideName;
   el.vialMg.value = plan.vialMg;
   el.startDate.value = plan.startDate;
-  el.shotsPerWeek.value = plan.shotsPerWeek;
-  el.everyDays.value = plan.everyDays;
-  el.flexibleDose.checked = Boolean(plan.flexibleDose);
-  el.flexibleDosePct.value = plan.flexibleDosePct ?? 10;
-  el.flexibleDosePct.disabled = !plan.flexibleDose;
 }
 
-// Schedule mode + cadence only — safe to call while the peptide-name field is
-// focused (it doesn't touch that input).
+// Kept as a narrow hook for peptide defaults; per-phase cadence lives in rows.
 export function writeScheduleControls(plan) {
-  document.querySelectorAll(".segmented-button").forEach((button) => {
-    button.classList.toggle("active", button.dataset.mode === plan.scheduleMode);
-  });
-  document.querySelectorAll(".schedule-field").forEach((field) => {
-    field.classList.toggle("hidden", field.dataset.for !== plan.scheduleMode);
-  });
-  el.shotsPerWeek.value = plan.shotsPerWeek;
-  el.everyDays.value = plan.everyDays;
+  renderTiers(plan);
 }
 
 export function writePrefs(prefs) {
@@ -174,14 +159,20 @@ export function writePrefs(prefs) {
 // load) — captions update in place during typing via renderOutputs.
 export function renderTiers(plan) {
   el.tierList.innerHTML = "";
-  const durationLabel = plan.scheduleMode === "interval" ? "Shots" : "Weeks";
-  const durationValue = (tier) => (plan.scheduleMode === "interval" ? tier.count : tier.weeks);
-  const durationAttrs =
-    plan.scheduleMode === "interval"
-      ? 'type="number" min="1" step="1"'
-      : 'type="number" min="0.5" step="0.5"';
   plan.tiers.forEach((tier, index) => {
     const isOff = tier.type === "off";
+    const durationLabel = tier.scheduleMode === "interval" ? "Shots" : "Weeks";
+    const durationValue = tier.scheduleMode === "interval" ? tier.count : tier.weeks;
+    const durationAttrs =
+      tier.scheduleMode === "interval"
+        ? 'type="number" min="1" step="1"'
+        : 'type="number" min="0.5" step="0.5"';
+    const cadenceLabel = tier.scheduleMode === "interval" ? "Every N days" : "Shots/week";
+    const cadenceValue = tier.scheduleMode === "interval" ? tier.everyDays : tier.shotsPerWeek;
+    const cadenceAttrs =
+      tier.scheduleMode === "interval"
+        ? 'type="number" min="1" step="1"'
+        : 'type="number" min="0.1" step="0.1"';
     const row = document.createElement("div");
     row.className = `tier-row${isOff ? " tier-row--off" : ""}`;
     row.dataset.index = String(index);
@@ -193,15 +184,50 @@ export function renderTiers(plan) {
           <input class="tier-dose" type="number" min="0.001" step="0.001" value="${tier.doseMg}" />
         </label>
       `;
+    const flexibleCell = isOff
+      ? ""
+      : `
+        <label class="tier-flex">
+          <input class="tier-flexible" type="checkbox"${tier.flexibleDose ? " checked" : ""} />
+          <span>Cleanup</span>
+          ${
+            tier.flexibleDose
+              ? `
+                <input class="tier-flexible-pct" type="number" min="1" max="100" step="1" value="${tier.flexibleDosePct ?? 10}" />
+                <small>% max</small>
+              `
+              : ""
+          }
+        </label>
+      `;
     row.innerHTML = `
+      <div class="tier-row-header">
+        <div class="tier-title">
+          <span class="tier-index">${index + 1}</span>
+          <strong>${isOff ? "Off phase" : `Phase ${index + 1}`}</strong>
+        </div>
+        <button class="button button--icon icon-button tier-remove" type="button" aria-label="Remove phase"${plan.tiers.length === 1 ? " disabled" : ""}>${iconX}</button>
+      </div>
       <div class="tier-main">
-        <div class="tier-index">${index + 1}</div>
+        <label class="field">
+          <span>Cadence</span>
+          <select class="tier-schedule-mode">
+            <option value="weekly"${tier.scheduleMode === "weekly" ? " selected" : ""}>Per week</option>
+            <option value="interval"${tier.scheduleMode === "interval" ? " selected" : ""}>Every N days</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>${cadenceLabel}</span>
+          <input class="tier-cadence" ${cadenceAttrs} value="${cadenceValue}" />
+        </label>
         <label class="field">
           <span>${durationLabel}</span>
-          <input class="tier-duration" ${durationAttrs} value="${durationValue(tier)}" />
+          <input class="tier-duration" ${durationAttrs} value="${durationValue}" />
         </label>
+      </div>
+      <div class="tier-dose-row">
         ${doseCell}
-        <button class="button button--icon icon-button tier-remove" type="button" aria-label="Remove phase"${plan.tiers.length === 1 ? " disabled" : ""}>${iconX}</button>
+        ${flexibleCell}
       </div>
       <div class="tier-caption"></div>
     `;
@@ -213,10 +239,8 @@ export function renderTiers(plan) {
 // Recompute the "Weeks 1–2 · 5 doses · 500 mg" caption for each phase without
 // rebuilding the inputs.
 function updateTierCaptions(plan) {
-  const dpw = dosesPerWeek(plan);
-  const interval = intervalDays(plan);
   const startDate = parseStartDate(plan.startDate);
-  let scheduleCursor = 0;
+  let dayCursor = 0;
   let doseCursor = 0;
   let lastShotDate = null;
   el.tierList.querySelectorAll(".tier-row").forEach((row, index) => {
@@ -226,17 +250,16 @@ function updateTierCaptions(plan) {
     }
     const isOff = tier.type === "off";
     row.classList.toggle("tier-row--off", isOff);
-    const scheduleCount = tierScheduleCount(tier, plan);
-    const count = tierDoseCount(tier, plan);
-    const startSlot = scheduleCursor + 1;
-    const endSlot = scheduleCursor + scheduleCount;
-    const startDay = Math.round(scheduleCursor * interval) + 1;
-    scheduleCursor += scheduleCount;
-    const endDay = Math.round(scheduleCursor * interval);
-    const startWeek = Math.ceil(startSlot / dpw);
-    const endWeek = Math.ceil(endSlot / dpw);
+    const scheduleCount = tierScheduleCount(tier);
+    const count = tierDoseCount(tier);
+    const interval = tierIntervalDays(tier);
+    const startDay = Math.round(dayCursor) + 1;
+    dayCursor += scheduleCount * interval;
+    const endDay = Math.round(dayCursor);
+    const startWeek = Math.max(1, Math.floor((startDay - 1) / 7) + 1);
+    const endWeek = Math.max(1, Math.ceil(endDay / 7));
     const rangeLabel =
-      plan.scheduleMode === "interval"
+      tier.scheduleMode === "interval"
         ? startDay === endDay
           ? `Day ${startDay}`
           : `Days ${startDay} - ${endDay}`
@@ -245,19 +268,17 @@ function updateTierCaptions(plan) {
           : `Weeks ${startWeek}–${endWeek}`;
     if (isOff) {
       const offLabel =
-        plan.scheduleMode === "interval"
+        tier.scheduleMode === "interval"
           ? `${scheduleCount} skipped ${scheduleCount === 1 ? "dose" : "doses"}`
           : `${formatNumber(tier.weeks, 1)} ${tier.weeks === 1 ? "week" : "weeks"} off`;
-      row.querySelector(".tier-caption").textContent = `${rangeLabel} · ${offLabel}`;
+      row.querySelector(".tier-caption").textContent = `${rangeLabel} · ${offLabel} · ${tierScheduleLabel(tier)}`;
       return;
     }
-    const startDose = doseCursor + 1;
-    const endDose = doseCursor + count;
     doseCursor += count;
-    lastShotDate = addDays(startDate, Math.round((endSlot - 1) * interval));
+    lastShotDate = addDays(startDate, Math.round(dayCursor - interval));
     const doseLabel = `${count} ${count === 1 ? "Dose" : "Doses"}`;
     row.querySelector(".tier-caption").textContent =
-      `${rangeLabel} · ${doseLabel} · ${mg(count * tier.doseMg)} mg total`;
+      `${rangeLabel} · ${doseLabel} · ${mg(count * tier.doseMg)} mg total · ${tierScheduleLabel(tier)}`;
   });
   el.phaseLastShot.textContent = lastShotDate ? formatDate(lastShotDate) : "-";
 }
@@ -300,8 +321,12 @@ function renderReconEmpty(message) {
   if (document.activeElement !== el.recommendedMl) {
     el.recommendedMl.value = "";
   }
+  el.recommendedMl.closest(".hero-ml").classList.remove("hidden");
+  el.recommendedPhaseList.innerHTML = "";
+  el.recommendedPhaseList.classList.add("hidden");
   el.resetMlBtn.classList.add("hidden");
   el.recommendedUnits.textContent = "-";
+  el.recommendedSummary.classList.remove("hidden");
   el.recommendedSummary.textContent = message;
   el.recommendedPerWeek.textContent = "";
   el.vialLasts.textContent = "-";
@@ -316,6 +341,15 @@ function renderReconEmpty(message) {
   el.phaseSuggestion.classList.add("hidden");
   el.scheduleList.innerHTML = "";
   el.scheduleSummary.textContent = "No schedule to preview yet.";
+}
+
+function formatPhaseRecommendationMl(phaseRecommendations, fallbackMl) {
+  if (phaseRecommendations.length > 1) {
+    return phaseRecommendations
+      .map((recommendation) => `P${recommendation.phaseNumber} ${formatNumber(recommendation.ml, 1)} mL`)
+      .join(", ");
+  }
+  return `${formatNumber(phaseRecommendations[0]?.ml ?? fallbackMl, 1)} mL`;
 }
 
 function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } = {}) {
@@ -440,34 +474,83 @@ function renderRecon(store, plan) {
 
   const { prefs } = store;
   const r = result.recommended;
+  const phaseRecommendations = result.phaseRecommendations || [];
+  const hasMultiplePhaseRecommendations = phaseRecommendations.length > 1;
   const planWeeks = result.planDurationDays / 7;
   const vialEndsBeforeBac = result.vialDurationDays <= prefs.bacWindowDays;
   const vialsLabel = result.vialsNeeded === 1 ? "1 vial" : `${result.vialsNeeded} vials`;
 
-  const dpw = dosesPerWeek(plan);
-  const distinctDoses = [...new Set(result.doses.map((d) => d.doseMg))].sort((a, b) => a - b);
-  const mgPerWeek = distinctDoses.map((dose) => dose * dpw);
-  const unitsPerWeek = distinctDoses.map((dose) => (dose / r.concentration) * 100 * dpw);
+  const phaseRecommendationByTier = new Map(
+    phaseRecommendations.map((recommendation) => [recommendation.tierIndex, recommendation]),
+  );
+  const doseGroups = [];
+  result.doses.forEach((dose) => {
+    const tier = plan.tiers[dose.tierIndex];
+    const phaseRecommendation = phaseRecommendationByTier.get(dose.tierIndex);
+    const units = phaseRecommendation
+      ? (dose.doseMg / phaseRecommendation.concentration) * 100
+      : (dose.doseMg / r.concentration) * 100;
+    const dpw = tier ? tierDosesPerWeek(tier) : 1;
+    const last = doseGroups[doseGroups.length - 1];
+    if (
+      last &&
+      last.tierIndex === dose.tierIndex &&
+      last.doseMg === dose.doseMg &&
+      Math.abs(last.units - units) < 0.001 &&
+      Math.abs(last.dpw - dpw) < 0.001
+    ) {
+      return;
+    }
+    doseGroups.push({ tierIndex: dose.tierIndex, doseMg: dose.doseMg, units, dpw });
+  });
+  const mgPerWeek = doseGroups.map((group) => group.doseMg * group.dpw);
+  const unitsPerWeek = doseGroups.map((group) => group.units * group.dpw);
+  const cadenceLabel = scheduleLabel(plan) === "mixed cadence" ? "mixed cadence" : scheduleLabel(plan);
 
-  el.recommendedMl.disabled = false;
+  el.recommendedMl.closest(".hero-ml").classList.toggle("hidden", hasMultiplePhaseRecommendations);
+  el.recommendedPhaseList.classList.toggle("hidden", !hasMultiplePhaseRecommendations);
+  el.recommendedPhaseList.innerHTML = hasMultiplePhaseRecommendations
+    ? `
+        ${phaseRecommendations
+          .map(
+            (recommendation) => `
+            <div class="phase-recon-item">
+              <span>Phase ${recommendation.phaseNumber}</span>
+              <strong>${formatNumber(recommendation.ml, 1)} mL</strong>
+            </div>
+          `,
+          )
+          .join("")}
+        ${r.overridden ? `<button id="resetMlPhaseBtn" class="hero-ml-reset phase-recon-reset" type="button">Auto</button>` : ""}
+      `
+    : "";
+  el.recommendedMl.disabled = hasMultiplePhaseRecommendations;
   // Don't stomp what the user is mid-way through typing into the field.
   if (document.activeElement !== el.recommendedMl) {
     el.recommendedMl.value = r.overridden ? String(r.ml) : formatNumber(r.ml, 1);
   }
   el.resetMlBtn.classList.toggle("hidden", !r.overridden);
-  const overMax = r.maxUnits > 100 ? " Warning: this exceeds a 100-unit syringe." : "";
-  el.recommendedUnits.textContent = formatRange(r.unitsByDose);
-  el.recommendedSummary.textContent = `Add ${formatNumber(r.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"}.${overMax}`;
+  const unitsByPhase = phaseRecommendations.flatMap((recommendation) => recommendation.unitsByDose);
+  const maxUnits = Math.max(...(unitsByPhase.length ? unitsByPhase : r.unitsByDose));
+  const overMax = maxUnits > 100 ? " Warning: this exceeds a 100-unit syringe." : "";
+  el.recommendedUnits.textContent = formatRange(unitsByPhase.length ? unitsByPhase : r.unitsByDose);
+  el.recommendedSummary.textContent = hasMultiplePhaseRecommendations
+    ? overMax.trim()
+    : `Add ${formatNumber(phaseRecommendations[0]?.ml ?? r.ml, 1)} mL BAC water to ${plan.peptideName || "the vial"}.${overMax}`;
+  el.recommendedSummary.classList.toggle("hidden", hasMultiplePhaseRecommendations && !overMax);
   el.recommendedPerWeek.textContent =
-    `≈ ${formatRange(mgPerWeek, 3)} mg / week · ${formatRange(unitsPerWeek, 0)} units / week (${formatNumber(dpw, 1)}x weekly)`;
+    `≈ ${formatRange(mgPerWeek, 3)} mg / week · ${formatRange(unitsPerWeek, 0)} units / week (${cadenceLabel})`;
   el.vialLasts.textContent = `${formatNumber(result.vialDurationDays, 0)} days`;
   el.totalShots.textContent = formatNumber(result.doses.length, 0);
-  el.concentration.textContent = `${formatNumber(r.concentration, 1)} mg/mL`;
+  el.concentration.textContent = phaseRecommendations.length
+    ? `${formatRange(phaseRecommendations.map((recommendation) => recommendation.concentration), 1)} mg/mL`
+    : `${formatNumber(r.concentration, 1)} mg/mL`;
   el.bacUseBy.textContent = formatDate(result.bacUseBy);
   el.phaseVials.textContent = vialsLabel;
   el.phaseLeftover.textContent = `${mg(result.lastVialLeftover)} mg`;
   el.phaseLeftoverRow.classList.toggle("hidden", result.lastVialLeftover <= 0.001);
-  if (plan.flexibleDose && result.cleanupSuggestions.length > 0) {
+  const hasFlexiblePhases = plan.tiers.some((tier) => tier.flexibleDose);
+  if (hasFlexiblePhases && result.cleanupSuggestions.length > 0) {
     const suggestion = result.cleanupSuggestions[0];
     const more = result.cleanupSuggestions.length > 1 ? ` ${result.cleanupSuggestions.length - 1} more vial cleanup adjustment${result.cleanupSuggestions.length === 2 ? "" : "s"} applied.` : "";
     const shotRange =
@@ -478,9 +561,9 @@ function renderRecon(store, plan) {
       `Cleaned vial ${suggestion.vialNumber}: increased ${shotRange} by ${formatNumber(suggestion.adjustmentPct, 1)}% (+${mg(suggestion.addedMg)} mg total).${more}`;
     el.phaseSuggestion.classList.remove("hidden");
   } else {
-    el.phaseSuggestion.textContent = plan.flexibleDose
-      ? `No cleanup adjustment found within ${formatNumber(plan.flexibleDosePct ?? 10, 0)}%.`
-      : "Flexible dose is off; vial cleanup suggestions are hidden.";
+    el.phaseSuggestion.textContent = hasFlexiblePhases
+      ? "No cleanup adjustment found within the enabled phase limits."
+      : "Flexible cleanup is off for every phase.";
     el.phaseSuggestion.classList.remove("hidden");
   }
   el.scheduleSummary.textContent =
@@ -535,6 +618,7 @@ function renderScheduleTab(store) {
   }
   computed.forEach(({ plan, result }) => {
     const vialsLabel = result.vialsNeeded === 1 ? "1 vial" : `${result.vialsNeeded} vials`;
+    const recommendationUnits = (result.phaseRecommendations || []).flatMap((recommendation) => recommendation.unitsByDose);
     const row = document.createElement("div");
     row.className = "plan-summary";
     row.innerHTML = `
@@ -547,8 +631,8 @@ function renderScheduleTab(store) {
         <small>${vialsLabel}</small>
       </div>
       <div class="plan-summary-stat">
-        <strong>${formatNumber(result.recommended.ml, 1)} mL</strong>
-        <small>${formatRange(result.recommended.unitsByDose)} units</small>
+        <strong>${formatPhaseRecommendationMl(result.phaseRecommendations || [], result.recommended.ml)}</strong>
+        <small>${formatRange(recommendationUnits.length ? recommendationUnits : result.recommended.unitsByDose)} units</small>
       </div>
       <div class="plan-summary-stat">
         <strong>${result.doses.length} shots</strong>

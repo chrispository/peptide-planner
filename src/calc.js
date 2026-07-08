@@ -4,47 +4,65 @@
 
 import { addDays, parseStartDate } from "./format.js";
 
-// A plan's cadence, expressed two ways:
-//   intervalDays  – days between consecutive shots
-//   dosesPerWeek  – how many shots fit in one calendar week
+// A phase's cadence, expressed two ways:
+//   tierIntervalDays – days between consecutive shots
+//   tierDosesPerWeek – how many shots fit in one calendar week
 // Weekly phases use weeks; interval phases use explicit shot counts.
-export function intervalDays(plan) {
-  if (plan.scheduleMode === "interval") {
-    return Math.max(1, plan.everyDays);
+export function tierIntervalDays(tier) {
+  if (tier.scheduleMode === "interval") {
+    return Math.max(1, tier.everyDays || 1);
   }
-  return 7 / Math.max(0.1, plan.shotsPerWeek);
+  return 7 / Math.max(0.1, tier.shotsPerWeek || 1);
 }
 
-export function dosesPerWeek(plan) {
-  if (plan.scheduleMode === "interval") {
-    return 7 / Math.max(1, plan.everyDays);
+export function tierDosesPerWeek(tier) {
+  if (tier.scheduleMode === "interval") {
+    return 7 / Math.max(1, tier.everyDays || 1);
   }
-  return Math.max(0.1, plan.shotsPerWeek);
+  return Math.max(0.1, tier.shotsPerWeek || 1);
+}
+
+export function tierScheduleLabel(tier) {
+  if (tier.scheduleMode === "interval") {
+    const days = tier.everyDays || 1;
+    return `every ${days} ${days === 1 ? "day" : "days"}`;
+  }
+  return `${tier.shotsPerWeek || 1}x per week`;
 }
 
 export function scheduleLabel(plan) {
-  if (plan.scheduleMode === "interval") {
-    return `every ${plan.everyDays} days`;
+  const labels = [
+    ...new Set((plan.tiers || []).filter((tier) => tier.type !== "off").map((tier) => tierScheduleLabel(tier))),
+  ];
+  if (labels.length === 0) {
+    return "no active phases";
   }
-  return `${plan.shotsPerWeek}x per week`;
+  if (labels.length === 1) {
+    return labels[0];
+  }
+  return "mixed cadence";
 }
 
 // Number of individual doses a phase contains at the plan's current cadence.
-export function tierDoseCount(tier, plan) {
+export function tierDoseCount(tier) {
   if (tier.type === "off") {
     return 0;
   }
-  if (plan.scheduleMode === "interval") {
+  if (tier.scheduleMode === "interval") {
     return Math.max(1, Math.round(tier.count || 1));
   }
-  return Math.max(1, Math.round((tier.weeks || 0) * dosesPerWeek(plan)));
+  return Math.max(1, Math.round((tier.weeks || 0) * tierDosesPerWeek(tier)));
 }
 
-export function tierScheduleCount(tier, plan) {
-  if (plan.scheduleMode === "interval") {
+export function tierScheduleCount(tier) {
+  if (tier.scheduleMode === "interval") {
     return Math.max(1, Math.round(tier.count || 1));
   }
-  return Math.max(1, Math.round((tier.weeks || 0) * dosesPerWeek(plan)));
+  return Math.max(1, Math.round((tier.weeks || 0) * tierDosesPerWeek(tier)));
+}
+
+function tierFlexibleRatio(tier) {
+  return Math.max(0.01, Math.min(1, (tier.flexibleDosePct ?? 10) / 100));
 }
 
 // Expand the phases into a flat list of doses, then walk it to see how many
@@ -52,22 +70,29 @@ export function tierScheduleCount(tier, plan) {
 // reconstituted identically).
 export function buildDosePlan(plan) {
   const vialMg = Math.max(0.01, plan.vialMg);
-  const flexibleRatio = Math.max(0.01, Math.min(1, (plan.flexibleDosePct ?? 10) / 100));
   const doses = [];
   let totalMg = 0;
-  let scheduleCursor = 0;
+  let dayCursor = 0;
 
   plan.tiers.forEach((tier, tierIndex) => {
-    const count = tierScheduleCount(tier, plan);
+    const count = tierScheduleCount(tier);
+    const interval = tierIntervalDays(tier);
     if (tier.type === "off") {
-      scheduleCursor += count;
+      dayCursor += count * interval;
       return;
     }
     for (let i = 0; i < count; i += 1) {
-      doses.push({ doseMg: tier.doseMg, baseDoseMg: tier.doseMg, tierIndex, scheduleIndex: scheduleCursor });
+      doses.push({
+        doseMg: tier.doseMg,
+        baseDoseMg: tier.doseMg,
+        tierIndex,
+        dayOffset: dayCursor + i * interval,
+        flexibleDose: Boolean(tier.flexibleDose),
+        flexibleRatio: tierFlexibleRatio(tier),
+      });
       totalMg += tier.doseMg;
-      scheduleCursor += 1;
     }
+    dayCursor += count * interval;
   });
 
   let vialsNeeded = 0;
@@ -88,7 +113,11 @@ export function buildDosePlan(plan) {
     const vialTotalMg = vialDoses.reduce((total, dose) => total + dose.doseMg, 0);
     const adjustmentRatio = vialTotalMg > 0 ? unusedMg / vialTotalMg : Infinity;
 
-    if (plan.flexibleDose && unusedMg > 0.001 && adjustmentRatio <= flexibleRatio + 1e-9) {
+    const canCleanup =
+      unusedMg > 0.001 &&
+      vialDoses.every((dose) => dose.flexibleDose && adjustmentRatio <= (dose.flexibleRatio ?? 0) + 1e-9);
+
+    if (canCleanup) {
       let runningRemaining = vialMg;
       for (let index = startIndex; index <= endIndex; index += 1) {
         const dose = doses[index];
@@ -193,14 +222,16 @@ function cloneDoses(doses) {
   }));
 }
 
-function allocateWholeUnitsForVial(vialDoses, vialMg, waterMl, flexibleRatio) {
+function allocateWholeUnitsForVial(vialDoses, vialMg, waterMl) {
   const unitMg = vialMg / (waterMl * 100);
   const baseUnits = vialDoses.map((dose) => (dose.baseDoseMg ?? dose.doseMg) / unitMg);
   const totalUnits = Math.round(waterMl * 100);
   const baseTotal = baseUnits.reduce((total, units) => total + units, 0);
   const extraUnits = totalUnits - baseTotal;
   const minUnits = baseUnits.map((units) => Math.ceil(units - 1e-9));
-  const maxUnits = baseUnits.map((units) => Math.floor(units * (1 + flexibleRatio) + 1e-9));
+  const maxUnits = baseUnits.map((units, index) =>
+    Math.floor(units * (1 + (vialDoses[index].flexibleRatio ?? 0)) + 1e-9),
+  );
   const minTotal = minUnits.reduce((total, units) => total + units, 0);
   const maxTotal = maxUnits.reduce((total, units) => total + units, 0);
 
@@ -255,7 +286,7 @@ function allocateWholeUnitsForVial(vialDoses, vialMg, waterMl, flexibleRatio) {
   return allocated;
 }
 
-function applyWholeUnitCleanup(doses, cleanupSuggestions, vialMg, recommended, flexibleRatio) {
+function applyWholeUnitCleanup(doses, cleanupSuggestions, vialMg, recommended) {
   if (!recommended || cleanupSuggestions.length === 0) {
     return true;
   }
@@ -265,7 +296,7 @@ function applyWholeUnitCleanup(doses, cleanupSuggestions, vialMg, recommended, f
       continue;
     }
     const vialDoses = doses.slice(suggestion.shotStartIndex, suggestion.shotEndIndex + 1);
-    const allocatedUnits = allocateWholeUnitsForVial(vialDoses, vialMg, recommended.ml, flexibleRatio);
+    const allocatedUnits = allocateWholeUnitsForVial(vialDoses, vialMg, recommended.ml);
     if (!allocatedUnits) {
       return false;
     }
@@ -289,18 +320,47 @@ function applyWholeUnitCleanup(doses, cleanupSuggestions, vialMg, recommended, f
   return true;
 }
 
+function buildPhaseRecommendations(plan, prefs, vialMg, doses, overrideMl) {
+  return plan.tiers
+    .map((tier, index) => {
+      if (tier.type === "off") {
+        return null;
+      }
+      const phaseDoses = doses.filter((dose) => dose.tierIndex === index);
+      if (phaseDoses.length === 0) {
+        return null;
+      }
+      const recommendation =
+        overrideMl != null
+          ? { ...evaluateWaterOption(vialMg, phaseDoses, overrideMl, prefs), overridden: true }
+          : buildWaterOptions(vialMg, phaseDoses, prefs)[0] || null;
+      if (!recommendation) {
+        return null;
+      }
+      return {
+        phaseNumber: index + 1,
+        tierIndex: index,
+        ml: recommendation.ml,
+        concentration: recommendation.concentration,
+        unitsByDose: recommendation.unitsByDose,
+        maxUnits: recommendation.maxUnits,
+        minUnits: recommendation.minUnits,
+        overridden: Boolean(recommendation.overridden),
+      };
+    })
+    .filter(Boolean);
+}
+
 // Everything derived for one plan. Returns { empty: true } when there are no
 // doses, or { recommended: null } when nothing fits a 100-unit syringe.
 export function computePlan(plan, prefs) {
   const vialMg = Math.max(0.01, plan.vialMg);
-  const flexibleRatio = Math.max(0.01, Math.min(1, (plan.flexibleDosePct ?? 10) / 100));
   let { doses, totalMg, vialsNeeded, firstVialDoses, lastVialLeftover, cleanupSuggestions } = buildDosePlan(plan);
 
   if (doses.length === 0) {
     return { empty: true };
   }
 
-  const interval = intervalDays(plan);
   const options = buildWaterOptions(vialMg, doses, prefs);
   const overrideMl = Number.isFinite(plan.waterMlOverride) && plan.waterMlOverride > 0 ? plan.waterMlOverride : null;
   let recommended = null;
@@ -311,16 +371,16 @@ export function computePlan(plan, prefs) {
     const candidateDoses = cloneDoses(doses);
     const candidate = { ...evaluateWaterOption(vialMg, candidateDoses, overrideMl, prefs), overridden: true };
     candidate.unitsByDose = [...candidate.unitsByDose];
-    if (plan.flexibleDose && cleanupSuggestions.length > 0) {
-      applyWholeUnitCleanup(candidateDoses, cleanupSuggestions, vialMg, candidate, flexibleRatio);
+    if (cleanupSuggestions.length > 0) {
+      applyWholeUnitCleanup(candidateDoses, cleanupSuggestions, vialMg, candidate);
     }
     doses = candidateDoses;
     recommended = candidate;
-  } else if (plan.flexibleDose && cleanupSuggestions.length > 0) {
+  } else if (cleanupSuggestions.length > 0) {
     for (const option of options) {
       const candidateDoses = cloneDoses(doses);
       const candidate = { ...option, unitsByDose: [...option.unitsByDose] };
-      if (applyWholeUnitCleanup(candidateDoses, cleanupSuggestions, vialMg, candidate, flexibleRatio)) {
+      if (applyWholeUnitCleanup(candidateDoses, cleanupSuggestions, vialMg, candidate)) {
         doses = candidateDoses;
         recommended = candidate;
         break;
@@ -328,15 +388,20 @@ export function computePlan(plan, prefs) {
     }
   }
   recommended = recommended || options[0] || null;
+  const phaseRecommendations = buildPhaseRecommendations(plan, prefs, vialMg, doses, overrideMl);
+  const phaseRecommendationByTier = new Map(
+    phaseRecommendations.map((recommendation) => [recommendation.tierIndex, recommendation]),
+  );
   const startDate = parseStartDate(plan.startDate);
   const bacUseBy = addDays(startDate, prefs.bacWindowDays);
-  const vialDurationDays = Math.max(0, Math.round((Math.max(1, firstVialDoses) - 1) * interval));
-  const lastScheduleIndex = Math.max(...doses.map((dose) => dose.scheduleIndex ?? 0));
-  const planDurationDays = Math.max(0, Math.round(lastScheduleIndex * interval));
+  const firstVialDayOffsets = doses.filter((dose) => dose.vialNumber === 1).map((dose) => dose.dayOffset ?? 0);
+  const vialDurationDays = Math.max(0, Math.round(Math.max(...firstVialDayOffsets) - Math.min(...firstVialDayOffsets)));
+  const lastDayOffset = Math.max(...doses.map((dose) => dose.dayOffset ?? 0));
+  const planDurationDays = Math.max(0, Math.round(lastDayOffset));
 
   const shots = doses.map((dose, index) => ({
     index,
-    date: addDays(startDate, Math.round((dose.scheduleIndex ?? index) * interval)),
+    date: addDays(startDate, Math.round(dose.dayOffset ?? index)),
     doseMg: dose.doseMg,
     tierIndex: dose.tierIndex,
     bacOpened: index === 0,
@@ -345,7 +410,11 @@ export function computePlan(plan, prefs) {
     opensVial: dose.opensVial,
     endsVial: dose.endsVial,
     vialRemainingAfter: dose.vialRemainingAfter,
-    units: recommended ? recommended.unitsByDose[index] : null,
+    units: phaseRecommendationByTier.has(dose.tierIndex)
+      ? (dose.doseMg / phaseRecommendationByTier.get(dose.tierIndex).concentration) * 100
+      : recommended
+        ? recommended.unitsByDose[index]
+        : null,
   }));
 
   return {
@@ -358,9 +427,9 @@ export function computePlan(plan, prefs) {
     firstVialDoses,
     lastVialLeftover,
     cleanupSuggestions,
-    interval,
     options,
     recommended,
+    phaseRecommendations,
     startDate,
     bacUseBy,
     vialDurationDays,

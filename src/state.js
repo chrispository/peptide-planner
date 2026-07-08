@@ -4,9 +4,8 @@
 // weekly schedules edit weeks, interval schedules edit count.
 
 import { dateInputValue } from "./format.js";
-import { dosesPerWeek } from "./calc.js";
 
-export const STATE_VERSION = 5;
+export const STATE_VERSION = 6;
 
 export const DEFAULT_PREFS = {
   previewCount: 8,
@@ -43,9 +42,28 @@ export function createPlan(overrides = {}) {
     flexibleDose: false,
     flexibleDosePct: 10,
     waterMlOverride: null, // null = use the auto-recommended volume
-    tiers: [{ type: "dose", weeks: 2.5, count: 5, doseMg: 100 }],
+    tiers: [
+      {
+        type: "dose",
+        weeks: 2.5,
+        count: 5,
+        doseMg: 100,
+        scheduleMode: "weekly",
+        shotsPerWeek: 2,
+        everyDays: 3,
+        flexibleDose: false,
+        flexibleDosePct: 10,
+      },
+    ],
     ...overrides,
   };
+}
+
+function tierDosesPerWeek(tier) {
+  if (tier.scheduleMode === "interval") {
+    return 7 / Math.max(1, num(tier.everyDays, 1));
+  }
+  return Math.max(0.1, num(tier.shotsPerWeek, 1));
 }
 
 // Coerce arbitrary tier input into { type, weeks, count, doseMg }. Older saves
@@ -54,18 +72,29 @@ function normalizeTiers(tiers, plan) {
   const list = (Array.isArray(tiers) ? tiers : [])
     .map((tier) => {
       const type = tier.type === "off" ? "off" : "dose";
+      const scheduleMode =
+        tier.scheduleMode === "interval" ? "interval" : plan.scheduleMode === "interval" ? "interval" : "weekly";
+      const shotsPerWeek = Math.max(0.1, num(tier.shotsPerWeek, plan.shotsPerWeek || 2));
+      const everyDays = Math.max(1, num(tier.everyDays, plan.everyDays || 3));
+      const cadence = { scheduleMode, shotsPerWeek, everyDays };
       const doseMg = type === "off" ? 0 : Math.max(0.001, num(tier.doseMg, 1));
       const hasWeeks = Number.isFinite(num(tier.weeks, NaN));
       const hasCount = Number.isFinite(num(tier.count, NaN));
       const count = hasCount
         ? Math.max(1, Math.round(num(tier.count, 1)))
-        : Math.max(1, Math.round(num(tier.weeks, 1) * dosesPerWeek(plan)));
+        : Math.max(1, Math.round(num(tier.weeks, 1) * tierDosesPerWeek(cadence)));
       const weeks = hasWeeks
         ? Math.max(0.5, num(tier.weeks))
-        : Math.max(0.5, count / dosesPerWeek(plan));
-      return { type, weeks, count, doseMg };
+        : Math.max(0.5, count / tierDosesPerWeek(cadence));
+      const flexibleDose =
+        typeof tier.flexibleDose === "boolean" ? tier.flexibleDose : Boolean(plan.flexibleDose);
+      const flexibleDosePct = Math.min(
+        100,
+        Math.max(1, num(tier.flexibleDosePct, plan.flexibleDosePct ?? 10)),
+      );
+      return { type, weeks, count, doseMg, ...cadence, flexibleDose, flexibleDosePct };
     });
-  return list.length ? list : [{ type: "dose", weeks: 2.5, count: 5, doseMg: 100 }];
+  return list.length ? list : createPlan().tiers;
 }
 
 export function createStore() {
@@ -117,7 +146,7 @@ export function hydrate(store, payload) {
   }
 
   // v1: a single plan stored under `fields` + top-level `tiers`/`scheduleMode`.
-  if (![2, 3, 4, 5].includes(payload.version) && payload.fields) {
+  if (![2, 3, 4, 5, 6].includes(payload.version) && payload.fields) {
     const f = payload.fields;
     store.prefs = normalizePrefs(f);
     const plan = createPlan({
@@ -135,7 +164,7 @@ export function hydrate(store, payload) {
     return true;
   }
 
-  // v2/v3/v4: array of plans + shared prefs. normalizeTiers fills whichever
+  // v2/v3/v4/v5: array of plans + shared prefs. normalizeTiers fills whichever
   // side of the hybrid tier duration is missing.
   if (!Array.isArray(payload.plans) || payload.plans.length === 0) {
     return false;

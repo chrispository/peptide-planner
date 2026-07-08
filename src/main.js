@@ -2,7 +2,7 @@
 // render layer to repaint. Keeps mutation logic here and rendering in render.js.
 
 import { dateInputValue } from "./format.js";
-import { dosesPerWeek, computeAll, mergeSchedule } from "./calc.js";
+import { computeAll, mergeSchedule } from "./calc.js";
 import { lookupPeptide } from "./peptides.js";
 import { downloadFile, buildIcs } from "./exporters.js";
 import {
@@ -45,10 +45,6 @@ function readActivePlan() {
   plan.peptideName = document.getElementById("peptideName").value;
   plan.vialMg = Math.max(0.01, num(document.getElementById("vialMg").value, plan.vialMg));
   plan.startDate = document.getElementById("startDate").value || plan.startDate;
-  plan.shotsPerWeek = Math.max(0.1, num(document.getElementById("shotsPerWeek").value, plan.shotsPerWeek));
-  plan.everyDays = Math.max(1, num(document.getElementById("everyDays").value, plan.everyDays));
-  plan.flexibleDose = document.getElementById("flexibleDose").checked;
-  plan.flexibleDosePct = clamp(num(document.getElementById("flexibleDosePct").value, plan.flexibleDosePct ?? 10), 1, 100);
 }
 
 function readPrefs() {
@@ -68,11 +64,29 @@ function syncTiersFromDom() {
     const previous = plan.tiers[Number(row.dataset.index)] || {};
     const isOff = previous.type === "off";
     const doseInput = row.querySelector(".tier-dose");
+    const scheduleMode = row.querySelector(".tier-schedule-mode")?.value === "interval" ? "interval" : "weekly";
+    const cadenceValue = num(row.querySelector(".tier-cadence")?.value, scheduleMode === "interval" ? previous.everyDays : previous.shotsPerWeek);
+    const flexibleDose = Boolean(row.querySelector(".tier-flexible")?.checked);
     return {
       type: isOff ? "off" : "dose",
       weeks: previous.weeks ?? 1,
       count: previous.count ?? 1,
       doseMg: isOff ? 0 : Math.max(0.001, num(doseInput?.value, previous.doseMg || 1)),
+      scheduleMode,
+      shotsPerWeek:
+        scheduleMode === "weekly"
+          ? Math.max(0.1, cadenceValue)
+          : Math.max(0.1, num(previous.shotsPerWeek, plan.shotsPerWeek || 2)),
+      everyDays:
+        scheduleMode === "interval"
+          ? Math.max(1, Math.round(cadenceValue))
+          : Math.max(1, num(previous.everyDays, plan.everyDays || 3)),
+      flexibleDose,
+      flexibleDosePct: clamp(
+        num(row.querySelector(".tier-flexible-pct")?.value, previous.flexibleDosePct ?? 10),
+        1,
+        100,
+      ),
     };
   });
   plan.tiers.forEach((tier, index) => {
@@ -80,7 +94,7 @@ function syncTiersFromDom() {
     if (!input) {
       return;
     }
-    if (plan.scheduleMode === "interval") {
+    if (tier.scheduleMode === "interval") {
       tier.count = Math.max(1, Math.round(num(input.value, tier.count)));
     } else {
       tier.weeks = Math.max(0.5, num(input.value, tier.weeks));
@@ -102,6 +116,12 @@ function maybeApplyPeptideDefaults(plan, previousName) {
   if (info.schedule.everyDays) {
     plan.everyDays = info.schedule.everyDays;
   }
+  plan.tiers = plan.tiers.map((tier) => ({
+    ...tier,
+    scheduleMode: info.schedule.mode,
+    shotsPerWeek: info.schedule.shotsPerWeek || tier.shotsPerWeek || plan.shotsPerWeek,
+    everyDays: info.schedule.everyDays || tier.everyDays || plan.everyDays,
+  }));
 }
 
 function addPeptidePlan() {
@@ -123,11 +143,16 @@ function handleFormEdit(event) {
   const target = event.target;
   const isTier =
     target.classList.contains("tier-duration") ||
-    target.classList.contains("tier-dose");
+    target.classList.contains("tier-dose") ||
+    target.classList.contains("tier-cadence") ||
+    target.classList.contains("tier-flexible") ||
+    target.classList.contains("tier-flexible-pct") ||
+    target.classList.contains("tier-schedule-mode");
   const isPeptide = target.id === "peptideName";
+  const isTierMode = target.classList.contains("tier-schedule-mode");
+  const isTierFlexibleToggle = target.classList.contains("tier-flexible");
   const plan = getActivePlan(store);
   const previousName = plan ? plan.peptideName : "";
-  const previousMode = plan ? plan.scheduleMode : "";
 
   if (isPeptide && target.value === ADD_PEPTIDE_OPTION) {
     addPeptidePlan();
@@ -139,13 +164,12 @@ function handleFormEdit(event) {
   if (isTier) {
     syncTiersFromDom();
   }
-  document.getElementById("flexibleDosePct").disabled = !plan?.flexibleDose;
   if (isPeptide && plan) {
     maybeApplyPeptideDefaults(plan, previousName);
     writeScheduleControls(plan); // reflects adopted cadence without touching the name field
-    if (plan.scheduleMode !== previousMode) {
-      renderTiers(plan);
-    }
+  }
+  if ((isTierMode || isTierFlexibleToggle) && plan) {
+    renderTiers(plan);
   }
 
   renderOutputs(store);
@@ -184,6 +208,19 @@ document.getElementById("resetMlBtn").addEventListener("click", () => {
   persistence.scheduleSave();
 });
 
+document.getElementById("recommendedPhaseList").addEventListener("click", (event) => {
+  if (!event.target.closest("#resetMlPhaseBtn")) {
+    return;
+  }
+  const plan = getActivePlan(store);
+  if (!plan) {
+    return;
+  }
+  plan.waterMlOverride = null;
+  renderOutputs(store);
+  persistence.scheduleSave();
+});
+
 document.getElementById("tierList").addEventListener("click", (event) => {
   const removeButton = event.target.closest(".tier-remove");
   const plan = getActivePlan(store);
@@ -201,8 +238,25 @@ document.getElementById("addTier").addEventListener("click", () => {
   if (!plan) {
     return;
   }
-  const last = [...plan.tiers].reverse().find((tier) => tier.type !== "off") || { doseMg: 100 };
-  plan.tiers.push({ type: "dose", weeks: 1, count: 1, doseMg: last.doseMg || 100 });
+  const last = [...plan.tiers].reverse().find((tier) => tier.type !== "off") || {
+    doseMg: 100,
+    scheduleMode: "weekly",
+    shotsPerWeek: 1,
+    everyDays: 7,
+    flexibleDose: false,
+    flexibleDosePct: 10,
+  };
+  plan.tiers.push({
+    type: "dose",
+    weeks: 1,
+    count: 1,
+    doseMg: last.doseMg || 100,
+    scheduleMode: last.scheduleMode || "weekly",
+    shotsPerWeek: last.shotsPerWeek || 1,
+    everyDays: last.everyDays || 7,
+    flexibleDose: Boolean(last.flexibleDose),
+    flexibleDosePct: last.flexibleDosePct ?? 10,
+  });
   renderTiers(plan);
   renderOutputs(store);
   persistence.scheduleSave();
@@ -213,7 +267,24 @@ document.getElementById("addOffTier").addEventListener("click", () => {
   if (!plan) {
     return;
   }
-  plan.tiers.push({ type: "off", weeks: 1, count: 1, doseMg: 0 });
+  const last = plan.tiers[plan.tiers.length - 1] || {
+    scheduleMode: "weekly",
+    shotsPerWeek: 1,
+    everyDays: 7,
+    flexibleDose: false,
+    flexibleDosePct: 10,
+  };
+  plan.tiers.push({
+    type: "off",
+    weeks: 1,
+    count: 1,
+    doseMg: 0,
+    scheduleMode: last.scheduleMode || "weekly",
+    shotsPerWeek: last.shotsPerWeek || 1,
+    everyDays: last.everyDays || 7,
+    flexibleDose: Boolean(last.flexibleDose),
+    flexibleDosePct: last.flexibleDosePct ?? 10,
+  });
   renderTiers(plan);
   renderOutputs(store);
   persistence.scheduleSave();
@@ -240,20 +311,6 @@ document.getElementById("planChips").addEventListener("click", (event) => {
 
 document.getElementById("addPlan").addEventListener("click", () => {
   addPeptidePlan();
-});
-
-document.querySelectorAll(".segmented-button").forEach((button) => {
-  button.addEventListener("click", () => {
-    const plan = getActivePlan(store);
-    if (!plan) {
-      return;
-    }
-    plan.scheduleMode = button.dataset.mode;
-    writeScheduleControls(plan);
-    renderTiers(plan);
-    renderOutputs(store);
-    persistence.scheduleSave();
-  });
 });
 
 document.querySelectorAll(".app-tab").forEach((tab) => {
