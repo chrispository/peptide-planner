@@ -88,7 +88,6 @@ builds are dropped on startup.
 
 ```sh
 npm start      # run the local server
-npm test       # run calc and state tests
 npm run check  # syntax-check server.js
 ```
 
@@ -104,5 +103,4 @@ src/render.js             DOM rendering
 src/main.js               Event wiring and app lifecycle
 src/persistence.js        Autosave/load client
 src/exporters.js          JSON and calendar exports
-test/                     node:test suites
 ```
