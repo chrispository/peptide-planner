@@ -27,7 +27,7 @@ Open `http://127.0.0.1:4173/`. Optional local overrides can go in `.env`:
 ```sh
 HOST=127.0.0.1        # set to 0.0.0.0 to expose on your LAN
 PORT=4173
-SHOTS_DATA_DIR=./data
+PEPTIDE_PLANNER_DATA_DIR=./data
 ```
 
 ## Self-hosting (Docker)
@@ -46,19 +46,19 @@ reverse proxy (Caddy, Traefik, nginx) at it if you want TLS or a hostname.
 Without Compose:
 
 ```sh
-docker build -t shots .
-docker run -d --name shots -p 4173:4173 -v "$(pwd)/data:/data" shots
+docker build -t peptide-planner .
+docker run -d --name peptide-planner -p 4173:4173 -v "$(pwd)/data:/data" peptide-planner
 ```
 
-Back up by copying `data/shots.sqlite`, or use the in-app gear menu to export a
-JSON snapshot.
+Back up by copying `data/peptide-planner.sqlite`, or use the in-app gear menu to
+export a JSON snapshot.
 
 ## Data
 
 The app autosaves one current planner snapshot to SQLite:
 
 ```txt
-data/shots.sqlite
+data/peptide-planner.sqlite
 ```
 
 Use the gear menu to import/export JSON backups. The schedule page can export an

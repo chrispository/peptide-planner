@@ -1,15 +1,17 @@
+name: peptide-planner
+
 services:
-  shots:
+  peptide-planner:
     build: .
-    container_name: shots
+    container_name: peptide-planner
     restart: unless-stopped
     ports:
       # host:container — change the left side to expose a different port on your LAN.
       - "4173:4173"
     volumes:
-      # Persists data/shots.sqlite across container rebuilds.
+      # Persists data/peptide-planner.sqlite across container rebuilds.
       - ./data:/data
     environment:
       - HOST=0.0.0.0
       - PORT=4173
-      - SHOTS_DATA_DIR=/data
+      - PEPTIDE_PLANNER_DATA_DIR=/data

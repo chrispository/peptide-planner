@@ -10,7 +10,7 @@ COPY icon.svg icon-512.png apple-touch-icon.png ./
 COPY src/ ./src/
 
 # Persisted planner database lives here; mount a volume to keep it across restarts.
-ENV SHOTS_DATA_DIR=/data
+ENV PEPTIDE_PLANNER_DATA_DIR=/data
 ENV HOST=0.0.0.0
 ENV PORT=4173
 VOLUME ["/data"]

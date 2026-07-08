@@ -1,28 +1,32 @@
 import { createServer } from "node:http";
-import { readFile, mkdir } from "node:fs/promises";
+import { readFile, mkdir, rename } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
-// SHOTS_DATA_DIR lets testing/dev point at a throwaway location so the real
-// saved planner in ./data is never touched. Defaults to ./data.
-const dataDir = process.env.SHOTS_DATA_DIR
-  ? path.resolve(process.env.SHOTS_DATA_DIR)
-  : path.join(rootDir, "data");
-const dbPath = path.join(dataDir, "shots.sqlite");
-const port = Number(process.env.PORT || 4173);
-// HOST controls which interface the server binds to. Defaults to loopback for
-// local use; set HOST=0.0.0.0 to expose it (e.g. inside a container on a homelab).
-const host = process.env.HOST || "127.0.0.1";
-
 // Load a local .env (gitignored) if present. No-op when the file is missing.
 try {
   process.loadEnvFile(path.join(rootDir, ".env"));
 } catch {
   // .env is optional.
 }
+
+// PEPTIDE_PLANNER_DATA_DIR lets testing/dev point at a throwaway location so the
+// real saved planner in ./data is never touched. SHOTS_DATA_DIR is kept as a
+// legacy fallback for existing installs.
+const dataDir = process.env.PEPTIDE_PLANNER_DATA_DIR
+  ? path.resolve(process.env.PEPTIDE_PLANNER_DATA_DIR)
+  : process.env.SHOTS_DATA_DIR
+    ? path.resolve(process.env.SHOTS_DATA_DIR)
+    : path.join(rootDir, "data");
+const dbPath = path.join(dataDir, "peptide-planner.sqlite");
+const legacyDbPath = path.join(dataDir, "shots.sqlite");
+const port = Number(process.env.PORT || 4173);
+// HOST controls which interface the server binds to. Defaults to loopback for
+// local use; set HOST=0.0.0.0 to expose it (e.g. inside a container on a homelab).
+const host = process.env.HOST || "127.0.0.1";
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -39,6 +43,9 @@ const contentTypes = {
 
 async function ensureDataDir() {
   await mkdir(dataDir, { recursive: true });
+  if (!existsSync(dbPath) && existsSync(legacyDbPath)) {
+    await rename(legacyDbPath, dbPath);
+  }
 }
 
 function openDatabase() {
