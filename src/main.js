@@ -322,14 +322,17 @@ document.querySelectorAll(".app-tab").forEach((tab) => {
 
 document.getElementById("addManualBacBtn").addEventListener("click", () => {
   const input = document.getElementById("manualBacDate");
-  const date = input.value;
+  addManualBacDate(input.value);
+});
+
+function addManualBacDate(date) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return;
   }
   store.prefs.manualBacOpenDates = [...new Set([...(store.prefs.manualBacOpenDates || []), date])].sort();
   renderOutputs(store);
   persistence.scheduleSave();
-});
+}
 
 document.getElementById("manualBacList").addEventListener("click", (event) => {
   const removeButton = event.target.closest(".manual-bac-remove");
@@ -341,6 +344,25 @@ document.getElementById("manualBacList").addEventListener("click", (event) => {
   );
   renderOutputs(store);
   persistence.scheduleSave();
+});
+
+document.getElementById("scheduleTabList").addEventListener("click", (event) => {
+  const toggle = event.target.closest(".quick-bac-toggle");
+  if (!toggle) {
+    return;
+  }
+  const form = toggle.closest(".quick-bac-form");
+  form?.classList.toggle("is-open");
+  form?.querySelector(".quick-bac-date")?.focus();
+});
+
+document.getElementById("scheduleTabList").addEventListener("submit", (event) => {
+  const form = event.target.closest(".quick-bac-form");
+  if (!form) {
+    return;
+  }
+  event.preventDefault();
+  addManualBacDate(form.querySelector(".quick-bac-date")?.value || "");
 });
 
 // ---- Tools menu ------------------------------------------------------------

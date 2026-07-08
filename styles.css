@@ -745,6 +745,48 @@ input[type="checkbox"] {
   text-transform: uppercase;
 }
 
+.tooltip-label {
+  position: relative;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.tooltip-label::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  width: max-content;
+  max-width: 190px;
+  padding: 7px 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+  color: var(--color-text);
+  box-shadow: var(--shadow-soft);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.35;
+  text-transform: none;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.tooltip-label:hover::after,
+.tooltip-label:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .phase-summary-row strong {
   font-family: var(--font-mono);
   font-size: 14px;
@@ -1140,6 +1182,67 @@ input[type="checkbox"] {
   font-weight: 500;
 }
 
+.schedule-event--with-action {
+  justify-content: flex-start;
+}
+
+.quick-bac-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-bac-date {
+  display: none;
+  width: 138px;
+  min-height: 28px;
+  padding: 0 7px;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.quick-bac-toggle,
+.quick-bac-add {
+  display: inline-grid;
+  place-items: center;
+  min-height: 28px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-warning);
+  cursor: pointer;
+}
+
+.quick-bac-toggle {
+  width: 28px;
+  padding: 0;
+}
+
+.quick-bac-toggle .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.quick-bac-add {
+  display: none;
+  padding: 0 9px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.quick-bac-toggle:hover,
+.quick-bac-add:hover {
+  border-color: var(--color-warning);
+  color: var(--color-text);
+}
+
+.quick-bac-form.is-open .quick-bac-date,
+.quick-bac-form.is-open .quick-bac-add {
+  display: inline-grid;
+}
+
 .shot-number {
   display: grid;
   place-items: center;
@@ -1342,13 +1445,6 @@ input[type="checkbox"] {
 
 .manual-bac-summary-main {
   color: var(--color-text);
-}
-
-.manual-bac-summary-meta {
-  color: var(--color-text-subtle);
-  font-size: 10px;
-  text-transform: none;
-  letter-spacing: 0;
 }
 
 .manual-bac-details[open] {

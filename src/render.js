@@ -372,6 +372,8 @@ function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } =
     addDayItem(firstShot.bacExpires, {
       type: "event",
       tone: "bac",
+      kind: "expires",
+      dateValue: dateInputValue(firstShot.bacExpires),
       label: `BAC Water ${bacNumber} Expiring`,
     });
   }
@@ -380,6 +382,8 @@ function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } =
     addDayItem(event.date, {
       type: "event",
       tone: event.tone,
+      kind: event.kind,
+      dateValue: event.dateValue,
       label: event.label,
       value: event.value,
     });
@@ -395,6 +399,8 @@ function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } =
       addDayItem(shot.bacExpires, {
         type: "event",
         tone: "bac",
+        kind: "expires",
+        dateValue: dateInputValue(shot.bacExpires),
         label: `BAC Water ${bacNumber} Expiring`,
       });
     }
@@ -456,9 +462,26 @@ function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } =
           if (item.type === "note") {
             return `<div class="schedule-note">${escapeHtml(item.text)}</div>`;
           }
+          const quickAdd =
+            item.kind === "expires"
+              ? `
+                <form class="quick-bac-form" data-quick-bac-form>
+                  <input class="quick-bac-date" type="date" value="${escapeHtml(item.dateValue || dateInputValue(day.date))}" aria-label="New BAC opened date" />
+                  <button class="quick-bac-toggle" type="button" aria-label="Quick open new BAC bottle" title="Quick open new BAC bottle">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <path d="M12 8v8" />
+                      <path d="M8 12h8" />
+                    </svg>
+                  </button>
+                  <button class="quick-bac-add" type="submit">Add</button>
+                </form>
+              `
+              : "";
           return `
-            <div class="schedule-event ${item.tone}">
+            <div class="schedule-event ${item.tone}${quickAdd ? " schedule-event--with-action" : ""}">
               <span>${item.label}</span>
+              ${quickAdd}
               ${item.value ? `<strong>${item.value}</strong>` : ""}
             </div>
           `;
@@ -632,6 +655,7 @@ function renderScheduleTab(store) {
         date: addDays(opened, store.prefs.bacWindowDays),
         tone: "bac",
         kind: "expires",
+        dateValue: dateInputValue(addDays(opened, store.prefs.bacWindowDays)),
         label: `BAC Water ${bacNumber} Expiring`,
       },
     ];
