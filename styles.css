@@ -497,8 +497,8 @@ h1 {
 }
 
 .section-heading.compact {
-  margin-top: 28px;
-  padding-top: 18px;
+  margin-top: 22px;
+  padding-top: 16px;
   border-top: 1px solid var(--color-border);
 }
 
@@ -588,10 +588,11 @@ input[type="checkbox"] {
 /* ---- Peptide meta + suggestions ---- */
 
 .peptide-note {
-  margin-top: 14px;
+  margin-top: 10px;
+  margin-bottom: -2px;
   color: var(--color-text-muted);
   font-size: 12.5px;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .ghost-button {
@@ -1207,7 +1208,7 @@ input[type="checkbox"] {
   display: inline-grid;
   place-items: center;
   min-height: 28px;
-  border: 1px solid var(--color-border-strong);
+  border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-warning);
@@ -1234,7 +1235,6 @@ input[type="checkbox"] {
 
 .quick-bac-toggle:hover,
 .quick-bac-add:hover {
-  border-color: var(--color-warning);
   color: var(--color-text);
 }
 

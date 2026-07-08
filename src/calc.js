@@ -278,7 +278,16 @@ export function buildWaterOptions(vialMg, doses, prefs) {
     options.push(option);
   }
 
-  return options.sort((a, b) => a.score - b.score || a.ml - b.ml);
+  const preferredMaxOptions =
+    prefs && Number.isFinite(prefs.maxUnits)
+      ? options.filter((option) => option.maxUnits <= prefs.maxUnits + 1e-9)
+      : [];
+  const rankedOptions = preferredMaxOptions.length > 0 ? preferredMaxOptions : options;
+  return rankedOptions.sort((a, b) => a.score - b.score || a.ml - b.ml);
+}
+
+function fitsPreferredMaxUnits(option, prefs) {
+  return !prefs || !Number.isFinite(prefs.maxUnits) || option.maxUnits <= prefs.maxUnits + 1e-9;
 }
 
 function cloneDoses(doses) {
@@ -446,7 +455,10 @@ export function computePlan(plan, prefs) {
     for (const option of options) {
       const candidateDoses = cloneDoses(doses);
       const candidate = { ...option, unitsByDose: [...option.unitsByDose] };
-      if (applyWholeUnitCleanup(candidateDoses, cleanupSuggestions, vialMg, candidate)) {
+      if (
+        applyWholeUnitCleanup(candidateDoses, cleanupSuggestions, vialMg, candidate) &&
+        fitsPreferredMaxUnits(candidate, prefs)
+      ) {
         doses = candidateDoses;
         recommended = candidate;
         break;

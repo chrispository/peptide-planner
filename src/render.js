@@ -463,7 +463,7 @@ function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } =
             return `<div class="schedule-note">${escapeHtml(item.text)}</div>`;
           }
           const quickAdd =
-            item.kind === "expires"
+            showTag && item.kind === "expires"
               ? `
                 <form class="quick-bac-form" data-quick-bac-form>
                   <input class="quick-bac-date" type="date" value="${escapeHtml(item.dateValue || dateInputValue(day.date))}" aria-label="New BAC opened date" />
@@ -576,7 +576,12 @@ function renderRecon(store, plan) {
   el.resetMlBtn.classList.toggle("hidden", !r.overridden);
   const unitsByPhase = phaseRecommendations.flatMap((recommendation) => recommendation.unitsByDose);
   const maxUnits = Math.max(...(unitsByPhase.length ? unitsByPhase : r.unitsByDose));
-  const overMax = maxUnits > 100 ? " Warning: this exceeds a 100-unit syringe." : "";
+  const overMax =
+    maxUnits > 100
+      ? " Warning: this exceeds a 100-unit syringe."
+      : maxUnits > prefs.maxUnits
+        ? ` Warning: this exceeds your ${formatNumber(prefs.maxUnits, 0)}-unit preference.`
+        : "";
   el.recommendedUnits.textContent = formatRange(unitsByPhase.length ? unitsByPhase : r.unitsByDose);
   el.recommendedSummary.textContent = hasDistinctPhaseRecommendations
     ? overMax.trim()
