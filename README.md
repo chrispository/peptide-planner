@@ -1,8 +1,8 @@
 # Peptide Dose Planner
 
-![Reconstitution and dosing view](docs/screenshot-dosing.png)
+![Reconstitution and dosing view](.github/assets/screenshot-dosing.png)
 
-![Scheduling view](docs/screenshot-schedule.png)
+![Scheduling view](.github/assets/screenshot-schedule.png)
 
 Local peptide reconstitution and scheduling planner. Choose a peptide, enter vial
 amounts and dose phases, then calculate BAC water volume, syringe units, vial
