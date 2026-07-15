@@ -136,7 +136,7 @@ function ensurePeptideOption(name) {
 export function writeFormValues(plan) {
   ensurePeptideOption(plan.peptideName);
   el.peptideName.value = plan.peptideName;
-  el.vialMg.value = plan.vialMg;
+  el.vialMg.value = formatNumber(plan.vialMg, 3);
   el.startDate.value = plan.startDate;
 }
 
@@ -181,7 +181,7 @@ export function renderTiers(plan) {
       : `
         <label class="field">
           <span>mg per dose</span>
-          <input class="tier-dose" type="number" min="0.001" step="0.001" value="${tier.doseMg}" />
+          <input class="tier-dose" type="number" min="0" step="1" value="${formatNumber(tier.doseMg, 3)}" />
         </label>
       `;
     const flexibleCell = isOff
@@ -352,7 +352,7 @@ function formatPhaseRecommendationMl(phaseRecommendations, fallbackMl) {
   return `${formatNumber(phaseRecommendations[0]?.ml ?? fallbackMl, 1)} mL`;
 }
 
-function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } = {}) {
+function renderShotList(target, shots, { showTag, events = [], bacNumber = 1, hidePast = false } = {}) {
   target.innerHTML = "";
   const days = new Map();
   const addDayItem = (date, item) => {
@@ -443,9 +443,7 @@ function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } =
     }
   });
 
-  [...days.values()]
-    .sort((a, b) => a.date - b.date)
-    .forEach((day) => {
+  const renderDay = (day, dayTarget = target) => {
       const row = document.createElement("div");
       row.className = "schedule-day";
       const items = day.items
@@ -491,8 +489,38 @@ function renderShotList(target, shots, { showTag, events = [], bacNumber = 1 } =
         <div class="shot-date">${formatDate(day.date)}</div>
         <div class="schedule-day-items">${items}</div>
       `;
-      target.appendChild(row);
-    });
+      dayTarget.appendChild(row);
+    };
+
+  const sortedDays = [...days.values()].sort((a, b) => a.date - b.date);
+  if (!hidePast) {
+    sortedDays.forEach((day) => renderDay(day));
+    return;
+  }
+
+  const today = startOfToday();
+  const upcomingDays = sortedDays.filter((day) => day.date >= today);
+  const pastDays = sortedDays.filter((day) => day.date < today);
+  upcomingDays.forEach((day) => renderDay(day));
+
+  if (pastDays.length > 0) {
+    const pastShotCount = pastDays.reduce(
+      (count, day) => count + day.items.filter((item) => item.type === "shot").length,
+      0,
+    );
+    const details = document.createElement("details");
+    details.className = "past-doses-details";
+    details.innerHTML = `
+      <summary>
+        <span>Past doses</span>
+        <span class="past-doses-count">${pastShotCount}</span>
+      </summary>
+      <div class="past-doses-list"></div>
+    `;
+    target.appendChild(details);
+    const pastList = details.querySelector(".past-doses-list");
+    pastDays.forEach((day) => renderDay(day, pastList));
+  }
 }
 
 function renderRecon(store, plan) {
@@ -708,12 +736,13 @@ function renderScheduleTab(store) {
       ? formatDate(manualUseByDates.sort((a, b) => a - b)[0])
       : "-";
     el.scheduleTabMeta.textContent = "All planned injections, merged in date order.";
-    renderShotList(el.scheduleTabList, [], { showTag: true, events: manualBacEvents });
+    renderShotList(el.scheduleTabList, [], { showTag: true, events: manualBacEvents, hidePast: true });
     return;
   }
 
   const today = startOfToday();
-  const nextShot = merged.find((shot) => shot.date >= today) || merged[0];
+  const nextShot = merged.find((shot) => shot.date >= today);
+  const pastShotCount = merged.filter((shot) => shot.date < today).length;
   const lastDate = merged[merged.length - 1].date;
   const spanDays = daysBetween(merged[0].date, lastDate);
   const sharedBacUseBy = addDays(merged[0].date, store.prefs.bacWindowDays);
@@ -724,13 +753,13 @@ function renderScheduleTab(store) {
   const soonestUseBy = useByDates.sort((a, b) => a - b)[0];
   const names = computed.map((e) => e.plan.peptideName || "Untitled").join(", ");
 
-  el.scheduleTabNext.textContent = formatDate(nextShot.date);
+  el.scheduleTabNext.textContent = nextShot ? formatDate(nextShot.date) : "Complete";
   el.scheduleTabLastShot.textContent = formatDate(lastDate);
   el.scheduleTabSpan.textContent = `${spanDays} days`;
   el.scheduleTabUseBy.textContent = formatDate(soonestUseBy);
-  el.scheduleTabMeta.textContent = `${merged.length} injections across ${names}.`;
+  el.scheduleTabMeta.textContent = `${merged.length - pastShotCount} upcoming${pastShotCount ? ` · ${pastShotCount} past` : ""} injections across ${names}.`;
 
-  renderShotList(el.scheduleTabList, merged, { showTag: true, events: manualBacEvents });
+  renderShotList(el.scheduleTabList, merged, { showTag: true, events: manualBacEvents, hidePast: true });
 }
 
 // ---- Public entry points --------------------------------------------------

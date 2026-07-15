@@ -1166,6 +1166,62 @@ input[type="checkbox"] {
   line-height: 1.4;
 }
 
+.past-doses-details {
+  border-top: 1px solid var(--color-border);
+}
+
+.past-doses-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 2px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  list-style: none;
+}
+
+.past-doses-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.past-doses-details summary::before {
+  content: "▸";
+  margin-right: 8px;
+  color: var(--color-text-subtle);
+}
+
+.past-doses-details[open] summary::before {
+  content: "▾";
+}
+
+.past-doses-details summary span:first-child {
+  margin-right: auto;
+}
+
+.past-doses-count {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-subtle);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.past-doses-list {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.past-doses-list > * + * {
+  border-top: 1px solid var(--color-border);
+}
+
 .schedule-event.end {
   color: var(--color-text-subtle);
 }

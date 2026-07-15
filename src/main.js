@@ -50,8 +50,8 @@ function readActivePlan() {
 function readPrefs() {
   const { prefs } = store;
   prefs.previewCount = clamp(Math.round(num(document.getElementById("previewCount").value, 8)), 3, 24);
-  prefs.maxUnits = Math.max(1, num(document.getElementById("maxUnits").value, 70));
-  prefs.idealUnits = Math.max(1, num(document.getElementById("idealUnits").value, 60));
+  prefs.maxUnits = Math.max(1, num(document.getElementById("maxUnits").value, 50));
+  prefs.idealUnits = Math.max(1, num(document.getElementById("idealUnits").value, 25));
   prefs.bacWindowDays = Math.max(1, num(document.getElementById("bacWindowDays").value, 35));
 }
 

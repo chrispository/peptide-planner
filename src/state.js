@@ -9,8 +9,8 @@ export const STATE_VERSION = 6;
 
 export const DEFAULT_PREFS = {
   previewCount: 8,
-  maxUnits: 70,
-  idealUnits: 60,
+  maxUnits: 50,
+  idealUnits: 25,
   bacWindowDays: 35,
   manualBacOpenDates: [],
 };
